@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/*.mts": {
-      "runtime": "nodejs18"
+      "runtime": "@vercel/node"
     }
   },
   "rewrites": [
