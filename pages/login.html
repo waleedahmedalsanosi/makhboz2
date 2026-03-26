@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تسجيل الدخول — مخبوز</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav class="navbar" id="main-nav"></nav>
+
+<main>
+<div class="container">
+  <div class="form-card" id="auth-form">
+    <!-- Tabs -->
+    <div class="tabs" style="justify-content:center;border:none;margin-bottom:20px">
+      <button class="tab active" id="tab-login" onclick="showTab('login')">تسجيل الدخول</button>
+      <button class="tab" id="tab-register" onclick="showTab('register')">حساب جديد</button>
+    </div>
+
+    <!-- Login Form -->
+    <div id="form-login">
+      <h2>أهلاً بك مجدداً!</h2>
+      <p class="form-sub">سجّل دخولك برقم الهاتف وكلمة المرور</p>
+      <div id="login-alert"></div>
+      <div class="form-group">
+        <label class="form-label">رقم الهاتف</label>
+        <input type="tel" class="form-input" id="login-phone" placeholder="09XXXXXXXX" dir="ltr">
+      </div>
+      <div class="form-group">
+        <label class="form-label">كلمة المرور</label>
+        <input type="password" class="form-input" id="login-password" placeholder="كلمة المرور">
+      </div>
+      <button class="btn btn-primary btn-block btn-lg" onclick="doLogin()" id="login-btn">دخول</button>
+    </div>
+
+    <!-- Register Form -->
+    <div id="form-register" style="display:none">
+      <h2>إنشاء حساب جديد</h2>
+      <p class="form-sub">انضم لمخبوز — مجاناً</p>
+      <div id="register-alert"></div>
+      <div class="form-group">
+        <label class="form-label">نوع الحساب</label>
+        <div style="display:flex;gap:8px">
+          <button class="filter-chip active" data-role="customer" onclick="selectRegRole(this)" style="flex:1;text-align:center">🛒 عميل</button>
+          <button class="filter-chip" data-role="baker" onclick="selectRegRole(this)" style="flex:1;text-align:center">👩‍🍳 صانعة</button>
+          <button class="filter-chip" data-role="driver" onclick="selectRegRole(this)" style="flex:1;text-align:center">🏍️ مندوب</button>
+        </div>
+        <input type="hidden" id="reg-role" value="customer">
+      </div>
+      <div class="form-group">
+        <label class="form-label">الاسم الكامل</label>
+        <input type="text" class="form-input" id="reg-name" placeholder="مثال: أحمد محمد">
+      </div>
+      <div class="form-group">
+        <label class="form-label">رقم الهاتف (واتساب)</label>
+        <input type="tel" class="form-input" id="reg-phone" placeholder="09XXXXXXXX" dir="ltr">
+      </div>
+      <div class="form-group">
+        <label class="form-label">كلمة المرور</label>
+        <input type="password" class="form-input" id="reg-password" placeholder="4 أحرف على الأقل">
+      </div>
+      <div class="form-group">
+        <label class="form-label">المنطقة</label>
+        <select class="form-input" id="reg-area">
+          <option value="">اختر منطقتك...</option>
+          <option value="bahri">بحري</option>
+          <option value="omdurman">أم درمان</option>
+          <option value="khartoum">الخرطوم</option>
+          <option value="khartoum-north">الخرطوم شمال</option>
+          <option value="other">منطقة أخرى</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-block btn-lg" onclick="doRegister()" id="register-btn">إنشاء حساب</button>
+    </div>
+  </div>
+</div>
+</main>
+
+<footer class="site-footer">
+  <p><strong>Makhboz</strong> | مخبوز — كعك · بيتفور · بسكويت · منين</p>
+  <p style="margin-top:6px">الخرطوم، السودان — 2026</p>
+</footer>
+
+<script src="/js/app.js"></script>
+<script>
+// Redirect if already logged in
+if (App.user) {
+  const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
+  window.location.href = redirect;
+}
+
+function showTab(tab) {
+  document.getElementById('form-login').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('form-register').style.display = tab === 'register' ? 'block' : 'none';
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+}
+
+function selectRegRole(el) {
+  document.querySelectorAll('[data-role]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('reg-role').value = el.dataset.role;
+}
+
+async function doLogin() {
+  const phone = document.getElementById('login-phone').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!phone || !password) { showError('login', 'الرجاء إدخال جميع الحقول'); return; }
+
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = 'جاري الدخول...';
+
+  try {
+    await App.login(phone, password);
+    const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
+    window.location.href = redirect;
+  } catch(e) {
+    showError('login', e.message);
+    btn.disabled = false; btn.textContent = 'دخول';
+  }
+}
+
+async function doRegister() {
+  const name = document.getElementById('reg-name').value.trim();
+  const phone = document.getElementById('reg-phone').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const area = document.getElementById('reg-area').value;
+  const role = document.getElementById('reg-role').value;
+
+  if (!name || !phone || !password || !area) { showError('register', 'الرجاء إكمال جميع الحقول'); return; }
+  if (password.length < 4) { showError('register', 'كلمة المرور يجب أن تكون 4 أحرف على الأقل'); return; }
+
+  const btn = document.getElementById('register-btn');
+  btn.disabled = true; btn.textContent = 'جاري إنشاء الحساب...';
+
+  try {
+    await App.register({ name, phone, password, area, role });
+    const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
+    window.location.href = redirect;
+  } catch(e) {
+    showError('register', e.message);
+    btn.disabled = false; btn.textContent = 'إنشاء حساب';
+  }
+}
+
+function showError(form, msg) {
+  const el = document.getElementById(form + '-alert');
+  el.innerHTML = `<div class="alert alert-error">${msg}</div>`;
+  setTimeout(() => el.innerHTML = '', 5000);
+}
+
+// Handle Enter key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    if (document.getElementById('form-login').style.display !== 'none') doLogin();
+    else doRegister();
+  }
+});
+
+// Check URL params for default tab
+if (new URLSearchParams(window.location.search).get('tab') === 'register') showTab('register');
+</script>
+</body>
+</html>

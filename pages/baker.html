@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة تحكم الصانعة — مخبوز</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav class="navbar" id="main-nav"></nav>
+
+<main>
+<div class="container">
+  <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+    <div>
+      <h1>👩‍🍳 لوحة التحكم</h1>
+      <p>أهلاً <span id="baker-name"></span> — أدر منتجاتك وطلباتك من هنا</p>
+    </div>
+    <button class="btn btn-amber" onclick="showAddProduct()">+ إضافة منتج</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="showSection('products')">منتجاتي</button>
+    <button class="tab" onclick="showSection('orders')">الطلبات الواردة</button>
+  </div>
+
+  <!-- Products Section -->
+  <div id="section-products">
+    <div id="my-products">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- Orders Section -->
+  <div id="section-orders" style="display:none">
+    <div id="baker-orders">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+</div>
+</main>
+
+<!-- Add/Edit Product Modal -->
+<div class="modal-overlay" id="product-modal">
+  <div class="modal">
+    <h3 id="modal-title">إضافة منتج جديد</h3>
+    <div class="form-group">
+      <label class="form-label">اسم المنتج *</label>
+      <input type="text" class="form-input" id="p-name" placeholder="مثال: كعك سوداني بالتمر">
+    </div>
+    <div class="form-group">
+      <label class="form-label">الفئة *</label>
+      <select class="form-input" id="p-category">
+        <option value="kaak">🍪 كعك</option>
+        <option value="petitfour">🧁 بيتفور</option>
+        <option value="biscuit">🍘 بسكويت</option>
+        <option value="manin">🥮 منين</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">الوصف</label>
+      <textarea class="form-input" id="p-desc" rows="3" placeholder="وصف المنتج والمكونات..."></textarea>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label class="form-label">السعر (ج.س) *</label>
+        <input type="number" class="form-input" id="p-price" placeholder="5000" dir="ltr">
+      </div>
+      <div class="form-group">
+        <label class="form-label">الوحدة</label>
+        <select class="form-input" id="p-unit">
+          <option value="kg">كيلو</option>
+          <option value="piece">قطعة</option>
+          <option value="box">صندوق</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">الحد الأدنى للطلب</label>
+      <input type="number" class="form-input" id="p-min" value="1" min="1" dir="ltr">
+    </div>
+    <div class="form-group">
+      <label class="form-label">المناسبات</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px" id="occasions-wrap">
+        <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" value="عيد الفطر"> عيد الفطر</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" value="عيد الأضحى"> عيد الأضحى</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" value="المولد النبوي"> المولد النبوي</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" value="أعراس"> أعراس</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" value="سماية"> سماية</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" value="ضيافة"> ضيافة</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" value="هدايا"> هدايا</label>
+      </div>
+    </div>
+    <input type="hidden" id="p-edit-id" value="">
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn btn-primary" style="flex:1" onclick="saveProduct()" id="save-product-btn">حفظ المنتج</button>
+      <button class="btn btn-secondary" onclick="closeModal()">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <p><strong>Makhboz</strong> | مخبوز — كعك · بيتفور · بسكويت · منين</p>
+  <p style="margin-top:6px">الخرطوم، السودان — 2026</p>
+</footer>
+
+<script src="/js/app.js"></script>
+<script>
+if (!App.user || App.user.role !== 'baker') {
+  window.location.href = '/pages/login.html?redirect=/pages/baker.html';
+}
+
+document.getElementById('baker-name').textContent = App.user ? App.user.name : '';
+
+function showSection(section) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('section-products').style.display = section === 'products' ? 'block' : 'none';
+  document.getElementById('section-orders').style.display = section === 'orders' ? 'block' : 'none';
+  if (section === 'orders') loadBakerOrders();
+}
+
+// Products
+async function loadMyProducts() {
+  const container = document.getElementById('my-products');
+  try {
+    const res = await fetch('/api/products?bakerId=' + App.user.id);
+    const data = await res.json();
+    const products = (data.products || []);
+
+    if (!products.length) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div><h3>لا توجد منتجات</h3><p>أضف أول منتج لتبدأ البيع على مخبوز</p></div>';
+      return;
+    }
+
+    container.innerHTML = '<div class="product-grid">' + products.map(p => `
+      <div class="card">
+        <div class="product-img" style="height:120px;font-size:48px">${p.emoji || '🍪'}</div>
+        <div class="card-body">
+          <div class="product-name">${p.name}</div>
+          <div class="product-price">${App.formatPrice(p.price)} <span class="unit">ج.س / ${p.unit === 'kg' ? 'كيلو' : p.unit === 'piece' ? 'قطعة' : 'صندوق'}</span></div>
+          <div style="margin-top:10px;display:flex;gap:6px">
+            <button class="btn btn-sm btn-secondary" onclick='editProduct(${JSON.stringify(p).replace(/'/g, "&#39;")})'>تعديل</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteProduct('${p.id}')">حذف</button>
+          </div>
+        </div>
+      </div>
+    `).join('') + '</div>';
+  } catch(e) {
+    container.innerHTML = '<div class="alert alert-error">حدث خطأ في تحميل المنتجات</div>';
+  }
+}
+
+function showAddProduct() {
+  document.getElementById('modal-title').textContent = 'إضافة منتج جديد';
+  document.getElementById('p-edit-id').value = '';
+  document.getElementById('p-name').value = '';
+  document.getElementById('p-category').value = 'kaak';
+  document.getElementById('p-desc').value = '';
+  document.getElementById('p-price').value = '';
+  document.getElementById('p-unit').value = 'kg';
+  document.getElementById('p-min').value = '1';
+  document.querySelectorAll('#occasions-wrap input').forEach(c => c.checked = false);
+  document.getElementById('product-modal').classList.add('show');
+}
+
+function editProduct(p) {
+  document.getElementById('modal-title').textContent = 'تعديل المنتج';
+  document.getElementById('p-edit-id').value = p.id;
+  document.getElementById('p-name').value = p.name;
+  document.getElementById('p-category').value = p.category;
+  document.getElementById('p-desc').value = p.description || '';
+  document.getElementById('p-price').value = p.price;
+  document.getElementById('p-unit').value = p.unit;
+  document.getElementById('p-min').value = p.minOrder || 1;
+  document.querySelectorAll('#occasions-wrap input').forEach(c => {
+    c.checked = (p.occasions || []).includes(c.value);
+  });
+  document.getElementById('product-modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('product-modal').classList.remove('show');
+}
+
+async function saveProduct() {
+  const name = document.getElementById('p-name').value.trim();
+  const category = document.getElementById('p-category').value;
+  const description = document.getElementById('p-desc').value.trim();
+  const price = document.getElementById('p-price').value;
+  const unit = document.getElementById('p-unit').value;
+  const minOrder = document.getElementById('p-min').value;
+  const editId = document.getElementById('p-edit-id').value;
+  const occasions = [];
+  document.querySelectorAll('#occasions-wrap input:checked').forEach(c => occasions.push(c.value));
+
+  if (!name || !price) { alert('الاسم والسعر مطلوبين'); return; }
+
+  const btn = document.getElementById('save-product-btn');
+  btn.disabled = true; btn.textContent = 'جاري الحفظ...';
+
+  try {
+    const payload = { name, category, description, price, unit, minOrder, occasions };
+    let res;
+    if (editId) {
+      payload.id = editId;
+      res = await fetch('/api/products', { method: 'PUT', headers: App.authHeaders(), body: JSON.stringify(payload) });
+    } else {
+      res = await fetch('/api/products', { method: 'POST', headers: App.authHeaders(), body: JSON.stringify(payload) });
+    }
+
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+
+    closeModal();
+    loadMyProducts();
+  } catch(e) {
+    alert(e.message || 'حدث خطأ');
+  }
+  btn.disabled = false; btn.textContent = 'حفظ المنتج';
+}
+
+async function deleteProduct(id) {
+  if (!confirm('هل تريد حذف هذا المنتج؟')) return;
+  try {
+    await fetch('/api/products?id=' + id, { method: 'DELETE', headers: App.authHeaders() });
+    loadMyProducts();
+  } catch(e) { alert('حدث خطأ'); }
+}
+
+// Orders
+async function loadBakerOrders() {
+  const container = document.getElementById('baker-orders');
+  try {
+    const res = await fetch('/api/orders', { headers: App.authHeaders() });
+    const data = await res.json();
+    const orders = data.orders || [];
+
+    if (!orders.length) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><h3>لا توجد طلبات واردة بعد</h3><p>ستظهر هنا الطلبات التي تحتوي على منتجاتك</p></div>';
+      return;
+    }
+
+    container.innerHTML = orders.map(order => `
+      <div class="order-card">
+        <div class="order-header">
+          <div>
+            <span class="order-id">${order.id}</span>
+            <span class="order-date">${App.timeAgo(order.createdAt)}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select class="form-input" style="width:auto;padding:4px 10px;font-size:12px" onchange="updateOrderStatus('${order.id}', this.value)">
+              <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>قيد الانتظار</option>
+              <option value="confirmed" ${order.status === 'confirmed' ? 'selected' : ''}>مؤكد</option>
+              <option value="preparing" ${order.status === 'preparing' ? 'selected' : ''}>قيد التحضير</option>
+              <option value="delivering" ${order.status === 'delivering' ? 'selected' : ''}>قيد التوصيل</option>
+              <option value="delivered" ${order.status === 'delivered' ? 'selected' : ''}>تم التوصيل</option>
+              <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>ملغي</option>
+            </select>
+            <span class="order-status status-${order.status}">${App.statusName(order.status)}</span>
+          </div>
+        </div>
+        <div style="font-size:13px;color:var(--gray);margin-bottom:8px">
+          👤 ${order.customerName} | 📱 ${order.customerPhone} | 📍 ${App.areaName(order.area)} — ${order.address}
+        </div>
+        <div class="order-items">
+          ${order.items.filter(i => i.bakerId === App.user.id).map(item => `
+            <div class="order-item">
+              <span>${item.productName} × ${item.qty}</span>
+              <span>${App.formatPrice(item.itemTotal)} ج.س</span>
+            </div>
+          `).join('')}
+        </div>
+        <div class="order-total">
+          <span>إجمالي منتجاتي</span>
+          <span>${App.formatPrice(order.items.filter(i => i.bakerId === App.user.id).reduce((s, i) => s + i.itemTotal, 0))} ج.س</span>
+        </div>
+        ${order.notes ? `<div style="margin-top:8px;font-size:12px;color:var(--gray)">📝 ${order.notes}</div>` : ''}
+      </div>
+    `).join('');
+  } catch(e) {
+    container.innerHTML = '<div class="alert alert-error">حدث خطأ في تحميل الطلبات</div>';
+  }
+}
+
+async function updateOrderStatus(orderId, status) {
+  try {
+    await fetch('/api/orders', {
+      method: 'POST',
+      headers: App.authHeaders(),
+      body: JSON.stringify({ action: 'updateStatus', orderId, status })
+    });
+    loadBakerOrders();
+  } catch(e) { alert('حدث خطأ في تحديث الحالة'); }
+}
+
+loadMyProducts();
+</script>
+</body>
+</html>

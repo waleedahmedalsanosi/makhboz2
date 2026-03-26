@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تفاصيل المنتج — مخبوز</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav class="navbar" id="main-nav"></nav>
+
+<main>
+<div class="container" style="padding-top:24px">
+  <a href="/" style="font-size:14px;color:var(--gray);display:inline-block;margin-bottom:16px">&larr; العودة للمتجر</a>
+  <div id="product-content">
+    <div class="loading"><div class="spinner"></div><p style="margin-top:12px">جاري التحميل...</p></div>
+  </div>
+</div>
+</main>
+
+<footer class="site-footer">
+  <p><strong>Makhboz</strong> | مخبوز — كعك · بيتفور · بسكويت · منين</p>
+  <p style="margin-top:6px">الخرطوم، السودان — 2026</p>
+</footer>
+
+<script src="/js/app.js"></script>
+<script>
+let product = null;
+let qty = 1;
+
+async function loadProduct() {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+  if (!id) { window.location.href = '/'; return; }
+
+  try {
+    const res = await fetch('/api/products?id=' + id);
+    if (!res.ok) throw new Error();
+    product = await res.json();
+    document.title = product.name + ' — مخبوز';
+    renderProduct();
+  } catch(e) {
+    document.getElementById('product-content').innerHTML = '<div class="empty-state"><div class="empty-icon">😕</div><h3>المنتج غير موجود</h3><p>ربما تم حذفه أو الرابط غير صحيح</p><a href="/" class="btn btn-primary" style="margin-top:12px">العودة للمتجر</a></div>';
+  }
+}
+
+function renderProduct() {
+  const p = product;
+  const unitLabel = p.unit === 'kg' ? 'كيلو' : p.unit === 'piece' ? 'قطعة' : 'صندوق';
+
+  document.getElementById('product-content').innerHTML = `
+    <div class="two-col">
+      <div>
+        <div style="background:var(--cream);border-radius:var(--radius);height:300px;display:flex;align-items:center;justify-content:center;font-size:120px;margin-bottom:24px">${p.emoji || '🍪'}</div>
+        <div style="background:var(--white);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)">
+          <h3 style="color:var(--teal);margin-bottom:12px">👩‍🍳 عن الصانعة</h3>
+          <p style="font-size:16px;font-weight:700;color:var(--teal)">${p.bakerName}</p>
+          <p style="font-size:13px;color:var(--gray)">📍 ${App.areaName(p.area)}</p>
+        </div>
+      </div>
+      <div>
+        <div class="summary-box" style="position:static">
+          <span class="product-category" style="margin-bottom:12px;display:inline-block">${App.categoryName(p.category)}</span>
+          <h1 style="font-size:28px;color:var(--teal);margin-bottom:8px">${p.name}</h1>
+          <p style="color:var(--gray);margin-bottom:20px;line-height:1.8">${p.description}</p>
+
+          <div style="font-size:28px;font-weight:800;color:var(--amber);margin-bottom:4px">${App.formatPrice(p.price)} <span style="font-size:14px;font-weight:400;color:var(--gray)">ج.س / ${unitLabel}</span></div>
+          ${p.minOrder > 1 ? `<p style="font-size:12px;color:var(--gray);margin-bottom:16px">الحد الأدنى: ${p.minOrder} ${unitLabel}</p>` : ''}
+
+          ${p.occasions && p.occasions.length ? `
+            <div style="margin:16px 0">
+              <p style="font-size:13px;font-weight:600;color:var(--teal);margin-bottom:8px">مناسب لـ:</p>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                ${p.occasions.map(o => `<span class="badge badge-teal">${o}</span>`).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          <hr style="border:none;border-top:1px solid var(--cream-dark);margin:20px 0">
+
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+            <label style="font-weight:600;color:var(--teal)">الكمية:</label>
+            <div class="qty-control">
+              <button class="qty-btn" onclick="changeQty(-1)">-</button>
+              <span class="qty-val" id="qty-display">${qty}</span>
+              <button class="qty-btn" onclick="changeQty(1)">+</button>
+            </div>
+            <span style="font-size:14px;color:var(--gray)">${unitLabel}</span>
+          </div>
+
+          <div style="font-size:18px;font-weight:700;color:var(--teal);margin-bottom:16px">الإجمالي: <span id="item-total">${App.formatPrice(p.price * qty)}</span> ج.س</div>
+
+          <button class="btn btn-amber btn-block btn-lg" onclick="addToCart()">🛒 أضف للسلة</button>
+          <div id="add-success" style="display:none;text-align:center;margin-top:12px">
+            <div class="alert alert-success">تمت الإضافة! <a href="/pages/cart.html" style="color:#155724;font-weight:700">عرض السلة</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function changeQty(delta) {
+  const minOrder = product.minOrder || 1;
+  qty = Math.max(minOrder, qty + delta);
+  document.getElementById('qty-display').textContent = qty;
+  document.getElementById('item-total').textContent = App.formatPrice(product.price * qty);
+}
+
+function addToCart() {
+  App.addToCart(product, qty);
+  document.getElementById('add-success').style.display = 'block';
+  setTimeout(() => {
+    const el = document.getElementById('add-success');
+    if (el) el.style.display = 'none';
+  }, 4000);
+}
+
+loadProduct();
+</script>
+</body>
+</html>

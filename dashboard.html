@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Makhboz Dashboard — Site Monitoring</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="logo.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #34565F;
+    --primary-light: #3d6a75;
+    --secondary: #F4EFD1;
+    --accent: #D4913A;
+    --success: #2D8B57;
+    --error: #C44536;
+    --bg: #f0f2f5;
+    --card: #ffffff;
+    --text: #1a1a2e;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,0.1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    width: 240px;
+    height: 100vh;
+    background: var(--primary);
+    color: white;
+    padding: 24px 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 20px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    margin-bottom: 16px;
+  }
+
+  .sidebar-logo img {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+  }
+
+  .sidebar-logo span {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .sidebar-nav { flex: 1; }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    color: rgba(255,255,255,0.7);
+    text-decoration: none;
+    font-size: 14px;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+
+  .nav-item:hover, .nav-item.active {
+    background: rgba(255,255,255,0.12);
+    color: white;
+  }
+
+  .nav-item.active {
+    border-right: 3px solid var(--accent);
+  }
+
+  .nav-icon {
+    width: 20px;
+    text-align: center;
+    font-size: 16px;
+  }
+
+  .sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255,255,255,0.15);
+  }
+
+  .sidebar-footer a {
+    color: rgba(255,255,255,0.6);
+    text-decoration: none;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .sidebar-footer a:hover { color: white; }
+
+  .main {
+    margin-left: 240px;
+    padding: 24px 32px;
+    min-height: 100vh;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+
+  .header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .range-selector {
+    display: flex;
+    background: var(--card);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .range-btn {
+    padding: 8px 14px;
+    font-size: 13px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+
+  .range-btn:hover { background: var(--bg); }
+  .range-btn.active { background: var(--primary); color: white; }
+
+  .refresh-btn {
+    padding: 8px 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+
+  .refresh-btn:hover { background: var(--bg); }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .stat-change {
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .stat-change.up { color: var(--success); }
+  .stat-change.down { color: var(--error); }
+  .stat-change.neutral { color: var(--text-muted); }
+
+  .charts-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+
+  .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+
+  .chart-container {
+    position: relative;
+    width: 100%;
+    height: 220px;
+  }
+
+  .bar-chart {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    height: 180px;
+    padding-top: 10px;
+    gap: 4px;
+  }
+
+  .bar-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    max-width: 60px;
+  }
+
+  .bar {
+    width: 100%;
+    max-width: 32px;
+    background: linear-gradient(180deg, var(--primary) 0%, var(--primary-light) 100%);
+    border-radius: 4px 4px 0 0;
+    min-height: 2px;
+    transition: height 0.4s ease;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .bar:hover {
+    background: linear-gradient(180deg, var(--accent) 0%, #e0a050 100%);
+  }
+
+  .bar-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .bar-tooltip {
+    display: none;
+    position: absolute;
+    top: -32px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 5;
+  }
+
+  .bar:hover .bar-tooltip { display: block; }
+
+  .donut-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    height: 180px;
+  }
+
+  .donut-svg { width: 140px; height: 140px; }
+
+  .donut-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .legend-value {
+    font-weight: 600;
+    margin-left: auto;
+    padding-left: 12px;
+  }
+
+  .tables-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .data-table th {
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .data-table td {
+    padding: 10px 0;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .data-table tr:last-child td { border-bottom: none; }
+
+  .hourly-chart {
+    display: flex;
+    align-items: flex-end;
+    height: 120px;
+    gap: 2px;
+  }
+
+  .hourly-bar {
+    flex: 1;
+    background: var(--primary);
+    border-radius: 2px 2px 0 0;
+    min-height: 2px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .hourly-bar:hover { opacity: 1; }
+
+  .hourly-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+  }
+
+  .hourly-labels span {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .status-dot.green { background: var(--success); }
+  .status-dot.yellow { background: var(--accent); }
+  .status-dot.red { background: var(--error); }
+
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .spinner {
+    width: 24px; height: 24px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 10px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+  }
+
+  .empty-state p { font-size: 14px; margin-top: 8px; }
+
+  .last-updated {
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  @media (max-width: 1024px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-row, .tables-row { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .header { flex-direction: column; gap: 12px; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <img src="logo.png" alt="Makhboz">
+    <span>Makhboz</span>
+  </div>
+  <div class="sidebar-nav">
+    <a class="nav-item active" href="#overview">
+      <span class="nav-icon">&#9632;</span> Overview
+    </a>
+    <a class="nav-item" href="#traffic">
+      <span class="nav-icon">&#8593;</span> Traffic
+    </a>
+    <a class="nav-item" href="#registrations">
+      <span class="nav-icon">&#9679;</span> Registrations
+    </a>
+  </div>
+  <div class="sidebar-footer">
+    <a href="/">&larr; Back to Website</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="header">
+    <div>
+      <h1>Site Monitoring</h1>
+      <span class="last-updated" id="lastUpdated"></span>
+    </div>
+    <div class="header-actions">
+      <div class="range-selector">
+        <button class="range-btn" data-range="1">Today</button>
+        <button class="range-btn active" data-range="7">7 Days</button>
+        <button class="range-btn" data-range="14">14 Days</button>
+        <button class="range-btn" data-range="30">30 Days</button>
+      </div>
+      <button class="refresh-btn" id="refreshBtn">&#8635; Refresh</button>
+    </div>
+  </div>
+
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card">
+      <div class="stat-label"><span class="status-dot green"></span> Total Visitors</div>
+      <div class="stat-value" id="totalVisitors">-</div>
+      <div class="stat-change neutral" id="visitorsChange">Loading...</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label"><span class="status-dot green"></span> Page Views (Period)</div>
+      <div class="stat-value" id="periodViews">-</div>
+      <div class="stat-change neutral" id="viewsChange">Loading...</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label"><span class="status-dot green"></span> Total Registrations</div>
+      <div class="stat-value" id="totalRegistrations">-</div>
+      <div class="stat-change neutral" id="regsChange">Loading...</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label"><span class="status-dot green"></span> Avg Daily Views</div>
+      <div class="stat-value" id="avgDaily">-</div>
+      <div class="stat-change neutral" id="avgChange">-</div>
+    </div>
+  </div>
+
+  <div class="charts-row" id="traffic">
+    <div class="card">
+      <div class="card-title">Daily Page Views</div>
+      <div class="chart-container">
+        <div class="bar-chart" id="dailyChart">
+          <div class="loading"><div class="spinner"></div> Loading analytics...</div>
+        </div>
+      </div>
+    </div>
+    <div class="card" id="registrations">
+      <div class="card-title">User Registrations</div>
+      <div class="donut-wrapper" id="donutChart">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="card">
+      <div class="card-title">Hourly Distribution (Today)</div>
+      <div id="hourlySection">
+        <div class="hourly-chart" id="hourlyChart"></div>
+        <div class="hourly-labels">
+          <span>12am</span><span>6am</span><span>12pm</span><span>6pm</span><span>11pm</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Top Pages</div>
+      <table class="data-table" id="topPages">
+        <thead><tr><th>Page</th><th style="text-align:right">Views</th></tr></thead>
+        <tbody><tr><td colspan="2" class="loading" style="height:auto;padding:20px">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="tables-row">
+    <div class="card">
+      <div class="card-title">Top Referrers</div>
+      <table class="data-table" id="topReferrers">
+        <thead><tr><th>Source</th><th style="text-align:right">Visits</th></tr></thead>
+        <tbody><tr><td colspan="2" class="loading" style="height:auto;padding:20px">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">Registration Breakdown</div>
+      <table class="data-table" id="regTable">
+        <thead><tr><th>Role</th><th style="text-align:right">Count</th></tr></thead>
+        <tbody><tr><td colspan="2" class="loading" style="height:auto;padding:20px">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+(function() {
+  let currentRange = 7;
+
+  // Range selector
+  document.querySelectorAll('.range-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.range-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      currentRange = parseInt(btn.dataset.range, 10);
+      loadAll();
+    });
+  });
+
+  document.getElementById('refreshBtn').addEventListener('click', loadAll);
+
+  async function fetchJSON(url) {
+    var res = await fetch(url);
+    if (!res.ok) throw new Error('Failed: ' + res.status);
+    return res.json();
+  }
+
+  function formatNum(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+    return String(n);
+  }
+
+  async function loadAll() {
+    document.getElementById('lastUpdated').textContent = 'Updating...';
+
+    try {
+      var [analytics, counts] = await Promise.all([
+        fetchJSON('/api/analytics?range=' + currentRange),
+        fetchJSON('/api/counts')
+      ]);
+
+      renderStats(analytics, counts);
+      renderDailyChart(analytics.days);
+      renderDonut(counts);
+      renderHourly(analytics.days);
+      renderTopPages(analytics.days);
+      renderReferrers(analytics.days);
+      renderRegTable(counts);
+
+      document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+    } catch (e) {
+      console.error('Dashboard error:', e);
+      document.getElementById('lastUpdated').textContent = 'Error loading data. Retrying...';
+      // Show zeros if data is unavailable
+      renderEmptyState();
+    }
+  }
+
+  function renderEmptyState() {
+    document.getElementById('totalVisitors').textContent = '0';
+    document.getElementById('periodViews').textContent = '0';
+    document.getElementById('totalRegistrations').textContent = '0';
+    document.getElementById('avgDaily').textContent = '0';
+    document.getElementById('visitorsChange').textContent = 'No data yet';
+    document.getElementById('viewsChange').textContent = 'No data yet';
+    document.getElementById('regsChange').textContent = 'No data yet';
+    document.getElementById('avgChange').textContent = '-';
+    document.getElementById('dailyChart').innerHTML = '<div class="empty-state"><p>No analytics data yet. Visit the main site to generate traffic data.</p></div>';
+    document.getElementById('donutChart').innerHTML = '<div class="empty-state"><p>No registrations yet.</p></div>';
+    document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+  }
+
+  function renderStats(analytics, counts) {
+    var days = analytics.days;
+    var totalPeriodViews = days.reduce(function(s, d) { return s + d.views; }, 0);
+    var totalRegs = (counts.customer || 0) + (counts.baker || 0) + (counts.driver || 0);
+    var avg = days.length > 0 ? Math.round(totalPeriodViews / days.length) : 0;
+
+    document.getElementById('totalVisitors').textContent = formatNum(counts.visitors || 0);
+    document.getElementById('periodViews').textContent = formatNum(totalPeriodViews);
+    document.getElementById('totalRegistrations').textContent = formatNum(totalRegs);
+    document.getElementById('avgDaily').textContent = formatNum(avg);
+
+    // Calculate change vs previous half period
+    var halfLen = Math.floor(days.length / 2);
+    if (halfLen > 0 && days.length > 1) {
+      var recent = days.slice(halfLen).reduce(function(s, d) { return s + d.views; }, 0);
+      var older = days.slice(0, halfLen).reduce(function(s, d) { return s + d.views; }, 0);
+      var pct = older > 0 ? Math.round(((recent - older) / older) * 100) : (recent > 0 ? 100 : 0);
+      var cls = pct > 0 ? 'up' : (pct < 0 ? 'down' : 'neutral');
+      var arrow = pct > 0 ? '&#9650;' : (pct < 0 ? '&#9660;' : '');
+      document.getElementById('viewsChange').className = 'stat-change ' + cls;
+      document.getElementById('viewsChange').innerHTML = arrow + ' ' + Math.abs(pct) + '% vs prior period';
+    } else {
+      document.getElementById('viewsChange').className = 'stat-change neutral';
+      document.getElementById('viewsChange').textContent = 'Not enough data';
+    }
+
+    document.getElementById('visitorsChange').className = 'stat-change neutral';
+    document.getElementById('visitorsChange').textContent = 'All time';
+    document.getElementById('regsChange').className = 'stat-change neutral';
+    document.getElementById('regsChange').textContent = 'All time';
+    document.getElementById('avgChange').textContent = 'per day';
+  }
+
+  function renderDailyChart(days) {
+    var container = document.getElementById('dailyChart');
+    if (!days.length) {
+      container.innerHTML = '<div class="empty-state"><p>No data for this period.</p></div>';
+      return;
+    }
+
+    var maxViews = Math.max.apply(null, days.map(function(d) { return d.views; }));
+    if (maxViews === 0) maxViews = 1;
+
+    container.innerHTML = '';
+    days.forEach(function(day) {
+      var group = document.createElement('div');
+      group.className = 'bar-group';
+      var height = Math.max(2, (day.views / maxViews) * 170);
+      var dateParts = day.date.split('-');
+      var label = dateParts[1] + '/' + dateParts[2];
+      group.innerHTML = '<div class="bar" style="height:' + height + 'px"><span class="bar-tooltip">' +
+        day.views + ' views</span></div><span class="bar-label">' + label + '</span>';
+      container.appendChild(group);
+    });
+  }
+
+  function renderDonut(counts) {
+    var container = document.getElementById('donutChart');
+    var data = [
+      { label: 'Customers', value: counts.customer || 0, color: '#34565F' },
+      { label: 'Bakers', value: counts.baker || 0, color: '#D4913A' },
+      { label: 'Drivers', value: counts.driver || 0, color: '#2D8B57' }
+    ];
+
+    var total = data.reduce(function(s, d) { return s + d.value; }, 0);
+
+    if (total === 0) {
+      container.innerHTML = '<div class="empty-state"><p>No registrations yet.</p></div>';
+      return;
+    }
+
+    var svgParts = [];
+    var cumulativePercent = 0;
+    var cx = 70, cy = 70, r = 55;
+
+    data.forEach(function(item) {
+      if (item.value === 0) return;
+      var percent = item.value / total;
+      var startAngle = cumulativePercent * 2 * Math.PI - Math.PI / 2;
+      cumulativePercent += percent;
+      var endAngle = cumulativePercent * 2 * Math.PI - Math.PI / 2;
+      var largeArc = percent > 0.5 ? 1 : 0;
+      var x1 = cx + r * Math.cos(startAngle);
+      var y1 = cy + r * Math.sin(startAngle);
+      var x2 = cx + r * Math.cos(endAngle);
+      var y2 = cy + r * Math.sin(endAngle);
+
+      if (percent >= 0.999) {
+        svgParts.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + item.color + '"/>');
+      } else {
+        svgParts.push('<path d="M ' + cx + ' ' + cy + ' L ' + x1 + ' ' + y1 + ' A ' + r + ' ' + r + ' 0 ' + largeArc + ' 1 ' + x2 + ' ' + y2 + ' Z" fill="' + item.color + '"/>');
+      }
+    });
+
+    // Inner circle for donut effect
+    svgParts.push('<circle cx="' + cx + '" cy="' + cy + '" r="32" fill="white"/>');
+    svgParts.push('<text x="' + cx + '" y="' + (cy + 5) + '" text-anchor="middle" font-size="16" font-weight="700" fill="#1a1a2e">' + total + '</text>');
+
+    var legendHtml = data.map(function(item) {
+      return '<div class="legend-item"><span class="legend-dot" style="background:' + item.color + '"></span>' +
+        item.label + '<span class="legend-value">' + item.value + '</span></div>';
+    }).join('');
+
+    container.innerHTML = '<svg class="donut-svg" viewBox="0 0 140 140">' + svgParts.join('') + '</svg>' +
+      '<div class="donut-legend">' + legendHtml + '</div>';
+  }
+
+  function renderHourly(days) {
+    var container = document.getElementById('hourlyChart');
+    // Use today's data (last element)
+    var today = days.length > 0 ? days[days.length - 1] : null;
+    var hourly = today && today.hourly ? today.hourly : new Array(24).fill(0);
+    var maxH = Math.max.apply(null, hourly);
+    if (maxH === 0) maxH = 1;
+
+    container.innerHTML = '';
+    hourly.forEach(function(val, i) {
+      var height = Math.max(2, (val / maxH) * 110);
+      var bar = document.createElement('div');
+      bar.className = 'hourly-bar';
+      bar.style.height = height + 'px';
+      bar.title = i + ':00 - ' + val + ' views';
+      container.appendChild(bar);
+    });
+  }
+
+  function renderTopPages(days) {
+    var pages = {};
+    days.forEach(function(d) {
+      for (var p in d.uniquePaths) {
+        pages[p] = (pages[p] || 0) + d.uniquePaths[p];
+      }
+    });
+
+    var sorted = Object.entries(pages).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 8);
+    var tbody = document.querySelector('#topPages tbody');
+
+    if (sorted.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;padding:20px;color:var(--text-muted)">No page data yet</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = sorted.map(function(entry) {
+      return '<tr><td>' + escapeHtml(entry[0]) + '</td><td style="text-align:right;font-weight:600">' + entry[1] + '</td></tr>';
+    }).join('');
+  }
+
+  function renderReferrers(days) {
+    var refs = {};
+    days.forEach(function(d) {
+      for (var r in d.referrers) {
+        refs[r] = (refs[r] || 0) + d.referrers[r];
+      }
+    });
+
+    var sorted = Object.entries(refs).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 8);
+    var tbody = document.querySelector('#topReferrers tbody');
+
+    if (sorted.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;padding:20px;color:var(--text-muted)">No referrer data yet</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = sorted.map(function(entry) {
+      return '<tr><td>' + escapeHtml(entry[0]) + '</td><td style="text-align:right;font-weight:600">' + entry[1] + '</td></tr>';
+    }).join('');
+  }
+
+  function renderRegTable(counts) {
+    var roles = [
+      { name: 'Customer', icon: '&#9679;', count: counts.customer || 0 },
+      { name: 'Baker', icon: '&#9679;', count: counts.baker || 0 },
+      { name: 'Driver', icon: '&#9679;', count: counts.driver || 0 }
+    ];
+
+    var tbody = document.querySelector('#regTable tbody');
+    tbody.innerHTML = roles.map(function(r) {
+      return '<tr><td>' + r.name + '</td><td style="text-align:right;font-weight:600">' + r.count + '</td></tr>';
+    }).join('');
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // Auto-refresh every 60 seconds
+  setInterval(loadAll, 60000);
+
+  // Initial load
+  loadAll();
+})();
+</script>
+</body>
+</html>

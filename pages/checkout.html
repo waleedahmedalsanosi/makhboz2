@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>إتمام الطلب — مخبوز</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav class="navbar" id="main-nav"></nav>
+
+<main>
+<div class="container">
+  <div class="page-header">
+    <h1>إتمام الطلب</h1>
+    <p>أكمل بيانات التوصيل لإنهاء طلبك</p>
+  </div>
+  <div id="checkout-content"></div>
+</div>
+</main>
+
+<footer class="site-footer">
+  <p><strong>Makhboz</strong> | مخبوز — كعك · بيتفور · بسكويت · منين</p>
+  <p style="margin-top:6px">الخرطوم، السودان — 2026</p>
+</footer>
+
+<script src="/js/app.js"></script>
+<script>
+function renderCheckout() {
+  const cart = App.getCart();
+  const container = document.getElementById('checkout-content');
+
+  if (!cart.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🛒</div><h3>السلة فارغة</h3><a href="/" class="btn btn-primary">تصفح المنتجات</a></div>';
+    return;
+  }
+
+  if (!App.user) {
+    container.innerHTML = `
+      <div class="alert alert-info">يجب تسجيل الدخول أولاً لإتمام الطلب</div>
+      <div style="text-align:center;margin-top:20px">
+        <a href="/pages/login.html?redirect=/pages/checkout.html" class="btn btn-primary btn-lg">تسجيل الدخول / إنشاء حساب</a>
+      </div>
+    `;
+    return;
+  }
+
+  const total = App.getCartTotal();
+  container.innerHTML = `
+    <div class="two-col">
+      <div>
+        <div style="background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;margin-bottom:20px">
+          <h3 style="color:var(--teal);margin-bottom:16px">بيانات التوصيل</h3>
+          <div class="form-group">
+            <label class="form-label">الاسم</label>
+            <input type="text" class="form-input" id="order-name" value="${App.user.name}" readonly style="background:var(--cream-light)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">رقم الهاتف</label>
+            <input type="tel" class="form-input" id="order-phone" value="${App.user.phone}" readonly dir="ltr" style="background:var(--cream-light)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">المنطقة</label>
+            <select class="form-input" id="order-area">
+              <option value="bahri" ${App.user.area === 'bahri' ? 'selected' : ''}>بحري</option>
+              <option value="omdurman" ${App.user.area === 'omdurman' ? 'selected' : ''}>أم درمان</option>
+              <option value="khartoum" ${App.user.area === 'khartoum' ? 'selected' : ''}>الخرطوم</option>
+              <option value="khartoum-north" ${App.user.area === 'khartoum-north' ? 'selected' : ''}>الخرطوم شمال</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">العنوان بالتفصيل *</label>
+            <input type="text" class="form-input" id="order-address" placeholder="مثال: حي الرياض، شارع 15، منزل رقم 22">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ملاحظات (اختياري)</label>
+            <textarea class="form-input" id="order-notes" rows="2" placeholder="مثال: التوصيل بعد الساعة 4 مساءً"></textarea>
+          </div>
+        </div>
+
+        <div style="background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px">
+          <h3 style="color:var(--teal);margin-bottom:16px">طريقة الدفع</h3>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <label style="display:flex;align-items:center;gap:10px;padding:12px;border:2px solid var(--cream-dark);border-radius:var(--radius);cursor:pointer">
+              <input type="radio" name="payment" value="cash" checked> <span style="font-weight:600">💵 نقدي عند الاستلام</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:12px;border:2px solid var(--cream-dark);border-radius:var(--radius);cursor:pointer">
+              <input type="radio" name="payment" value="bankak"> <span style="font-weight:600">🏦 بنكك</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:12px;border:2px solid var(--cream-dark);border-radius:var(--radius);cursor:pointer">
+              <input type="radio" name="payment" value="fawry"> <span style="font-weight:600">📱 فوري</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="summary-box">
+          <h3 style="color:var(--teal);margin-bottom:16px">ملخص الطلب</h3>
+          ${cart.map(item => `
+            <div class="summary-row">
+              <span>${item.emoji || '🍪'} ${item.name} × ${item.qty}</span>
+              <span>${App.formatPrice(item.price * item.qty)} ج.س</span>
+            </div>
+          `).join('')}
+          <div class="summary-row total">
+            <span>الإجمالي</span>
+            <span>${App.formatPrice(total)} ج.س</span>
+          </div>
+          <button class="btn btn-amber btn-block btn-lg" style="margin-top:20px" onclick="placeOrder()" id="place-order-btn">تأكيد الطلب</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div class="modal-overlay" id="success-modal">
+      <div class="modal" style="text-align:center">
+        <div style="font-size:64px;margin-bottom:12px">✅</div>
+        <h3>تم تأكيد الطلب بنجاح!</h3>
+        <p style="color:var(--gray);margin:12px 0" id="order-id-display"></p>
+        <p style="color:var(--gray);margin-bottom:20px">سيتم التواصل معك عبر واتساب لتأكيد موعد التوصيل</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <a href="/pages/orders.html" class="btn btn-primary">متابعة طلباتي</a>
+          <a href="/" class="btn btn-secondary">العودة للمتجر</a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function placeOrder() {
+  const address = document.getElementById('order-address').value.trim();
+  if (!address) {
+    alert('الرجاء إدخال العنوان بالتفصيل');
+    return;
+  }
+
+  const btn = document.getElementById('place-order-btn');
+  btn.disabled = true;
+  btn.textContent = 'جاري تأكيد الطلب...';
+
+  try {
+    const cart = App.getCart();
+    const payment = document.querySelector('input[name="payment"]:checked').value;
+    const area = document.getElementById('order-area').value;
+    const notes = document.getElementById('order-notes').value.trim();
+
+    const res = await fetch('/api/orders', {
+      method: 'POST',
+      headers: App.authHeaders(),
+      body: JSON.stringify({
+        items: cart.map(i => ({ id: i.id, qty: i.qty })),
+        area,
+        address,
+        paymentMethod: payment,
+        notes
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    App.clearCart();
+    document.getElementById('order-id-display').textContent = 'رقم الطلب: ' + data.id;
+    document.getElementById('success-modal').classList.add('show');
+  } catch(e) {
+    alert(e.message || 'حدث خطأ أثناء تأكيد الطلب');
+    btn.disabled = false;
+    btn.textContent = 'تأكيد الطلب';
+  }
+}
+
+renderCheckout();
+</script>
+</body>
+</html>

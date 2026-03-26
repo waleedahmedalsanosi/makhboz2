@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مخبوز — سوق الحلويات والمخبوزات السودانية</title>
+<meta name="description" content="مخبوز — أول منصة سودانية لطلب الكعك والبيتفور والبسكويت والمنين المنزلي. تصفح واطلب من أمهات سودانيات في الخرطوم.">
+<link rel="icon" type="image/png" href="/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav class="navbar" id="main-nav"></nav>
+
+<section class="hero-banner">
+  <img src="/logo.png" alt="مخبوز" style="width:80px;height:80px;border-radius:50%;margin-bottom:12px;border:3px solid rgba(244,239,209,0.3)">
+  <h1>مخبوز <span style="font-size:0.5em;opacity:0.7">Makhboz</span></h1>
+  <p>كعك · بيتفور · بسكويت · منين — من أيدي أمهات سودانيات لبيتكم</p>
+</section>
+
+<main>
+<div class="container" style="padding-top:40px">
+  <!-- Filters -->
+  <div class="filters-bar">
+    <input type="search" class="search-input" id="search" placeholder="ابحث عن منتج أو صانعة...">
+    <button class="filter-chip active" data-category="" onclick="filterCategory(this)">الكل</button>
+    <button class="filter-chip" data-category="kaak" onclick="filterCategory(this)">🍪 كعك</button>
+    <button class="filter-chip" data-category="petitfour" onclick="filterCategory(this)">🧁 بيتفور</button>
+    <button class="filter-chip" data-category="biscuit" onclick="filterCategory(this)">🍘 بسكويت</button>
+    <button class="filter-chip" data-category="manin" onclick="filterCategory(this)">🥮 منين</button>
+  </div>
+
+  <!-- Area Filter -->
+  <div class="filters-bar" style="margin-bottom:20px">
+    <span style="font-size:13px;color:var(--gray);font-weight:600">المنطقة:</span>
+    <button class="filter-chip active" data-area="" onclick="filterArea(this)" style="padding:5px 12px;font-size:12px">الكل</button>
+    <button class="filter-chip" data-area="bahri" onclick="filterArea(this)" style="padding:5px 12px;font-size:12px">بحري</button>
+    <button class="filter-chip" data-area="omdurman" onclick="filterArea(this)" style="padding:5px 12px;font-size:12px">أم درمان</button>
+    <button class="filter-chip" data-area="khartoum" onclick="filterArea(this)" style="padding:5px 12px;font-size:12px">الخرطوم</button>
+    <button class="filter-chip" data-area="khartoum-north" onclick="filterArea(this)" style="padding:5px 12px;font-size:12px">الخرطوم شمال</button>
+  </div>
+
+  <!-- Products Grid -->
+  <div id="products-container">
+    <div class="loading"><div class="spinner"></div><p style="margin-top:12px">جاري تحميل المنتجات...</p></div>
+  </div>
+</div>
+</main>
+
+<footer class="site-footer">
+  <p><strong>Makhboz</strong> | مخبوز — كعك · بيتفور · بسكويت · منين</p>
+  <p style="margin-top:6px">الخرطوم، السودان — 2026</p>
+</footer>
+
+<script src="/js/app.js"></script>
+<script>
+let allProducts = [];
+let currentCategory = '';
+let currentArea = '';
+let searchTimeout = null;
+
+async function loadProducts() {
+  try {
+    // Try to seed on first visit
+    try { await fetch('/api/seed', { method: 'POST' }); } catch(e) {}
+
+    const params = new URLSearchParams();
+    if (currentCategory) params.set('category', currentCategory);
+    if (currentArea) params.set('area', currentArea);
+
+    const res = await fetch('/api/products?' + params.toString());
+    const data = await res.json();
+    allProducts = data.products || [];
+    renderProducts(allProducts);
+  } catch(e) {
+    document.getElementById('products-container').innerHTML = '<div class="empty-state"><div class="empty-icon">😕</div><h3>حدث خطأ</h3><p>لم نتمكن من تحميل المنتجات. حاول مرة أخرى.</p></div>';
+  }
+}
+
+function renderProducts(products) {
+  const container = document.getElementById('products-container');
+  if (!products.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><h3>لا توجد منتجات</h3><p>جرب تغيير الفلتر أو البحث بكلمة مختلفة</p></div>';
+    return;
+  }
+
+  container.innerHTML = '<div class="product-grid">' + products.map(p => `
+    <div class="card product-card" onclick="window.location.href='/pages/product.html?id=${p.id}'">
+      <div class="product-img">${p.emoji || '🍪'}</div>
+      <div class="card-body">
+        <div class="product-name">${p.name}</div>
+        <div class="product-baker">👩‍🍳 ${p.bakerName}</div>
+        <div class="product-price">${App.formatPrice(p.price)} <span class="unit">ج.س / ${p.unit === 'kg' ? 'كيلو' : p.unit === 'piece' ? 'قطعة' : 'صندوق'}</span></div>
+        <div class="product-meta">
+          <span class="product-area">📍 ${App.areaName(p.area)}</span>
+          <span class="product-category">${App.categoryName(p.category)}</span>
+        </div>
+      </div>
+    </div>
+  `).join('') + '</div>';
+}
+
+function filterCategory(el) {
+  document.querySelectorAll('[data-category]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  currentCategory = el.dataset.category;
+  loadProducts();
+}
+
+function filterArea(el) {
+  document.querySelectorAll('[data-area]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  currentArea = el.dataset.area;
+  loadProducts();
+}
+
+document.getElementById('search').addEventListener('input', function(e) {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    const q = e.target.value.trim().toLowerCase();
+    if (!q) { renderProducts(allProducts); return; }
+    const filtered = allProducts.filter(p =>
+      p.name.includes(q) || p.bakerName.includes(q) || p.description.includes(q)
+    );
+    renderProducts(filtered);
+  }, 300);
+});
+
+loadProducts();
+</script>
+</body>
+</html>
