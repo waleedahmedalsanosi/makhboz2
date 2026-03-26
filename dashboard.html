@@ -234,13 +234,14 @@ function showTab(tabName) {
 async function loadDashboardData() {
   try {
     // Load products
-    const productsResponse = await fetch('/api/products?baker=' + App.user.id, {
+    const productsResponse = await fetch('/api/products?bakerId=' + App.user.id, {
       headers: App.authHeaders()
     });
-    const products = await productsResponse.json();
+    const productsData = await productsResponse.json();
+    const products = productsData.products || [];
     
     // Load orders
-    const ordersResponse = await fetch('/api/orders?baker=' + App.user.id, {
+    const ordersResponse = await fetch('/api/orders', {
       headers: App.authHeaders()
     });
     const orders = await ordersResponse.json();
@@ -251,7 +252,7 @@ async function loadDashboardData() {
     
     const totalSales = orders
       .filter(o => o.status !== 'cancelled')
-      .reduce((sum, order) => sum + order.total, 0);
+      .reduce((sum, order) => sum + (order.total || 0), 0);
     document.getElementById('total-sales').textContent = totalSales + ' ج.س';
     
     // Render products
@@ -303,10 +304,10 @@ function renderOrders(orders) {
       <div>
         <strong>طلب #${order.id}</strong>
         <div style="color: var(--text-muted); font-size: 0.9rem;">
-          ${order.customerName} • ${order.total} ج.س
+          ${order.customerName || 'عميل'} • ${order.total || 0} ج.س
         </div>
         <div style="margin-top: 5px;">
-          ${order.items.map(item => `${item.qty}x ${item.name}`).join(', ')}
+          ${(order.items || []).map(item => `${item.qty || 1}x ${item.productName || item.name || 'منتج'}`).join(', ')}
         </div>
       </div>
       <div>
@@ -337,8 +338,7 @@ function setupFormHandlers() {
       unit: document.getElementById('product-unit').value,
       category: document.getElementById('product-category').value,
       emoji: document.getElementById('product-emoji').value || '🍪',
-      bakerId: App.user.id,
-      bakerName: App.user.name
+      minOrder: 1
     };
     
     try {
@@ -369,10 +369,10 @@ function setupFormHandlers() {
 
 async function updateOrderStatus(orderId, newStatus) {
   try {
-    const response = await fetch('/api/orders/' + orderId, {
-      method: 'PATCH',
+    const response = await fetch('/api/orders', {
+      method: 'POST',
       headers: App.authHeaders(),
-      body: JSON.stringify({ status: newStatus })
+      body: JSON.stringify({ action: 'updateStatus', orderId, status: newStatus })
     });
     
     if (!response.ok) throw new Error('فشل تحديث الطلب');
@@ -390,7 +390,7 @@ async function deleteProduct(productId) {
   if (!confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
   
   try {
-    const response = await fetch('/api/products/' + productId, {
+    const response = await fetch('/api/products?id=' + productId, {
       method: 'DELETE',
       headers: App.authHeaders()
     });
