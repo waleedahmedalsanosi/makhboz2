@@ -1,15 +1,29 @@
 {
   "name": "repo",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "مخبوز - سوداني كعك، بيتفور، بسكويت، منين",
+  "main": "index.html",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "python -m http.server 8000",
+    "build": "echo 'No build step needed - static site'",
+    "deploy:vercel": "vercel --prod",
+    "deploy:railway": "railway up",
+    "deploy:render": "echo 'Deploy via Render dashboard'",
+    "start": "python -m http.server 8000"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@netlify/blobs": "^10.7.4"
-  }
+  },
+  "devDependencies": {
+    "vercel": "^28.4.8",
+    "@railway/cli": "^3.2.4"
+  },
+  "keywords": [
+    "sudanese",
+    "bakery",
+    "marketplace",
+    "e-commerce"
+  ],
+  "author": "Makhboz Team",
+  "license": "MIT"
 }
