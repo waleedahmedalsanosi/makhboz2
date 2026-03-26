@@ -32,17 +32,49 @@
 
 <script src="/js/app.js"></script>
 <script>
-if (!App.user) {
-  window.location.href = '/pages/login.html?redirect=/pages/orders.html';
-}
+// Initialize orders page
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('Orders page loading...');
+  
+  // Wait for App to initialize
+  if (typeof App !== 'undefined') {
+    // Force user load from localStorage
+    const savedUser = localStorage.getItem('makhboz_user');
+    if (savedUser) {
+      try {
+        App.user = JSON.parse(savedUser);
+        console.log('User loaded from localStorage:', App.user);
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+      }
+    }
+    
+    // Check authentication
+    if (!App.user || !App.user.id) {
+      console.log('No user found, redirecting to login');
+      window.location.href = '/pages/login.html?redirect=/pages/orders.html';
+      return;
+    }
+    
+    // Load orders
+    loadOrders();
+  } else {
+    console.error('App not loaded');
+  }
+});
 
 async function loadOrders() {
   const container = document.getElementById('orders-content');
   try {
+    console.log('Loading orders for user:', App.user);
+    
     const res = await fetch('/api/orders', { headers: App.authHeaders() });
-    if (!res.ok) throw new Error();
+    if (!res.ok) throw new Error('فشل تحميل الطلبات');
+    
     const data = await res.json();
     const orders = data.orders || [];
+    
+    console.log('Orders loaded:', orders);
 
     if (!orders.length) {
       container.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><h3>لا توجد طلبات بعد</h3><p>تصفح المنتجات واطلب الآن!</p><a href="/" class="btn btn-primary">تصفح المنتجات</a></div>';
@@ -86,7 +118,7 @@ function paymentLabel(method) {
   return map[method] || method;
 }
 
-loadOrders();
+// Don't auto-call loadOrders - wait for DOMContentLoaded
 </script>
 </body>
 </html>
