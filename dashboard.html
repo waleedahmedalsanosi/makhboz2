@@ -486,7 +486,7 @@ function renderOrders() {
         <h4>طلب #${order.id}</h4>
         <p>العميل: ${order.customerName || 'غير محدد'}</p>
         <p>الإجمالي: ${order.total || 0} ج.س</p>
-        <p>المنتجات: ${(order.items || []).map(item => `${item.qty || 1}x ${item.productName || 'منتج'}`).join(', ')}</p>
+        <p>المنتجات: ${(order.items || []).map(item => `${item.qty || 1}x ${item.productName || 'منتج'} (${item.bakerName || currentUser.name})`).join(', ')}</p>
       </div>
       <div class="item-actions">
         <span class="status-badge status-${order.status}">
