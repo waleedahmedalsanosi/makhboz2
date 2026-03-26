@@ -30,6 +30,30 @@
 
 <script src="/js/app.js"></script>
 <script>
+// Initialize checkout page
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('Checkout page loading...');
+  
+  // Wait for App to initialize
+  if (typeof App !== 'undefined') {
+    // Force user load from localStorage
+    const savedUser = localStorage.getItem('makhboz_user');
+    if (savedUser) {
+      try {
+        App.user = JSON.parse(savedUser);
+        console.log('User loaded from localStorage:', App.user);
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+      }
+    }
+    
+    // Render checkout
+    renderCheckout();
+  } else {
+    console.error('App not loaded');
+  }
+});
+
 function renderCheckout() {
   const cart = App.getCart();
   const container = document.getElementById('checkout-content');
@@ -39,7 +63,12 @@ function renderCheckout() {
     return;
   }
 
-  if (!App.user) {
+  // Debug user status
+  console.log('Current user:', App.user);
+  console.log('User role:', App.user?.role);
+
+  if (!App.user || !App.user.id) {
+    console.log('No user found, showing login required');
     container.innerHTML = `
       <div class="alert alert-info">يجب تسجيل الدخول أولاً لإتمام الطلب</div>
       <div style="text-align:center;margin-top:20px">
@@ -132,6 +161,15 @@ function renderCheckout() {
 }
 
 async function placeOrder() {
+  console.log('Placing order...');
+  
+  // Double-check user authentication
+  if (!App.user || !App.user.id) {
+    alert('يجب تسجيل الدخول أولاً');
+    window.location.href = '/pages/login.html?redirect=/pages/checkout.html';
+    return;
+  }
+  
   const address = document.getElementById('order-address').value.trim();
   if (!address) {
     alert('الرجاء إدخال العنوان بالتفصيل');
@@ -148,6 +186,14 @@ async function placeOrder() {
     const area = document.getElementById('order-area').value;
     const notes = document.getElementById('order-notes').value.trim();
 
+    console.log('Order data:', {
+      items: cart,
+      area,
+      address,
+      paymentMethod: payment,
+      notes
+    });
+
     const res = await fetch('/api/orders', {
       method: 'POST',
       headers: App.authHeaders(),
@@ -161,19 +207,22 @@ async function placeOrder() {
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    console.log('Order response:', data);
+    
+    if (!res.ok) throw new Error(data.error || 'فشل إتمام الطلب');
 
     App.clearCart();
     document.getElementById('order-id-display').textContent = 'رقم الطلب: ' + data.id;
     document.getElementById('success-modal').classList.add('show');
   } catch(e) {
+    console.error('Order error:', e);
     alert(e.message || 'حدث خطأ أثناء تأكيد الطلب');
     btn.disabled = false;
     btn.textContent = 'تأكيد الطلب';
   }
 }
 
-renderCheckout();
+// Don't auto-render - wait for DOMContentLoaded
 </script>
 </body>
 </html>
