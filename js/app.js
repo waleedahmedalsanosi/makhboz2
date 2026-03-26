@@ -126,7 +126,7 @@ const App = {
     if (this.user) {
       if (this.user.role === 'baker') {
         userLinks = `
-          <a href="/pages/baker.html" class="${isActive('/pages/baker.html')}">👩‍🍳 <span class="nav-text">لوحة التحكم</span></a>
+          <a href="/dashboard.html" class="${isActive('/dashboard.html')}">👩‍🍳 <span class="nav-text">لوحة التحكم</span></a>
           <a href="/pages/orders.html" class="${isActive('/pages/orders.html')}">📋 <span class="nav-text">طلباتي</span></a>
         `;
       } else {

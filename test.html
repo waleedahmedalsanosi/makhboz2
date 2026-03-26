@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>اختبار لوحة التحكم</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav class="navbar" id="main-nav"></nav>
+
+<main>
+<div class="container">
+  <h1>صفحة اختبار لوحة التحكم</h1>
+  
+  <div id="test-results">
+    <h3>نتائج الاختبار:</h3>
+    <div id="user-info"></div>
+    <div id="api-tests"></div>
+  </div>
+
+  <div class="form-card">
+    <h3>اختبار سريع</h3>
+    <button onclick="testAuth()" class="btn btn-primary">اختبار المصادقة</button>
+    <button onclick="testProductsAPI()" class="btn btn-secondary">اختبار API المنتجات</button>
+    <button onclick="testOrdersAPI()" class="btn btn-secondary">اختبار API الطلبات</button>
+    <button onclick="window.location.href='/dashboard.html'" class="btn btn-success">الذهاب للوحة التحكم</button>
+  </div>
+</div>
+</main>
+
+<script src="/js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  showUserInfo();
+});
+
+function showUserInfo() {
+  const userInfo = document.getElementById('user-info');
+  if (App.user) {
+    userInfo.innerHTML = `
+      <div class="alert alert-success">
+        <strong>مستخدم مسجل:</strong><br>
+        الاسم: ${App.user.name}<br>
+        الدور: ${App.user.role}<br>
+        المنطقة: ${App.user.area}<br>
+        ID: ${App.user.id}
+      </div>
+    `;
+  } else {
+    userInfo.innerHTML = `
+      <div class="alert alert-error">
+        <strong>لا يوجد مستخدم مسجل</strong><br>
+        <a href="/pages/login.html">تسجيل الدخول</a>
+      </div>
+    `;
+  }
+}
+
+async function testAuth() {
+  const results = document.getElementById('api-tests');
+  results.innerHTML += '<div>جاري اختبار المصادقة...</div>';
+  
+  try {
+    const token = App.getToken();
+    results.innerHTML += `<div class="alert alert-success">Token موجود: ${token ? 'نعم' : 'لا'}</div>`;
+    
+    if (token) {
+      const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: App.authHeaders(),
+        body: JSON.stringify({ action: 'verify', token })
+      });
+      const data = await response.json();
+      results.innerHTML += `<div class="alert alert-success">التحقق من Token: ${data.valid ? 'صالح' : 'غير صالح'}</div>`;
+    }
+  } catch (error) {
+    results.innerHTML += `<div class="alert alert-error">خطأ في المصادقة: ${error.message}</div>`;
+  }
+}
+
+async function testProductsAPI() {
+  const results = document.getElementById('api-tests');
+  results.innerHTML += '<div>جاري اختبار API المنتجات...</div>';
+  
+  try {
+    const response = await fetch('/api/products');
+    const data = await response.json();
+    results.innerHTML += `<div class="alert alert-success">API المنتجات يعمل - عدد المنتجات: ${data.products?.length || 0}</div>`;
+  } catch (error) {
+    results.innerHTML += `<div class="alert alert-error">خطأ في API المنتجات: ${error.message}</div>`;
+  }
+}
+
+async function testOrdersAPI() {
+  const results = document.getElementById('api-tests');
+  results.innerHTML += '<div>جاري اختبار API الطلبات...</div>';
+  
+  try {
+    const response = await fetch('/api/orders', {
+      headers: App.authHeaders()
+    });
+    const data = await response.json();
+    results.innerHTML += `<div class="alert alert-success">API الطلبات يعمل - عدد الطلبات: ${data.orders?.length || 0}</div>`;
+  } catch (error) {
+    results.innerHTML += `<div class="alert alert-error">خطأ في API الطلبات: ${error.message}</div>`;
+  }
+}
+</script>
+</body>
+</html>
