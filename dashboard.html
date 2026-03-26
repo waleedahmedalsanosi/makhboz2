@@ -480,13 +480,20 @@ function renderOrders() {
     return;
   }
   
-  container.innerHTML = orders.map(order => `
+  console.log('Rendering orders:', orders);
+  
+  container.innerHTML = orders.map(order => {
+    console.log('Order items:', order.items);
+    return `
     <div class="order-item">
       <div class="item-info">
         <h4>طلب #${order.id}</h4>
         <p>العميل: ${order.customerName || 'غير محدد'}</p>
         <p>الإجمالي: ${order.total || 0} ج.س</p>
-        <p>المنتجات: ${(order.items || []).map(item => `${item.qty || 1}x ${item.productName || 'منتج'} (${item.bakerName || currentUser.name})`).join(', ')}</p>
+        <p>المنتجات: ${(order.items || []).map(item => {
+          console.log('Item:', item);
+          return `${item.qty || 1}x ${item.productName || 'منتج'} (${item.bakerName || 'لا يوجد اسم'})`;
+        }).join(', ')}</p>
       </div>
       <div class="item-actions">
         <span class="status-badge status-${order.status}">
@@ -496,7 +503,8 @@ function renderOrders() {
           `<button class="btn btn-small btn-primary" onclick="updateOrderStatus('${order.id}', 'confirmed')">تأكيد</button>` : ''}
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function getStatusText(status) {
