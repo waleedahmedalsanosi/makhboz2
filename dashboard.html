@@ -488,19 +488,29 @@ function renderOrders() {
     <div class="order-item">
       <div class="item-info">
         <h4>طلب #${order.id}</h4>
-        <p>العميل: ${order.customerName || 'غير محدد'}</p>
-        <p>الإجمالي: ${order.total || 0} ج.س</p>
-        <p>المنتجات: ${(order.items || []).map(item => {
-          console.log('Item:', item);
-          return `${item.qty || 1}x ${item.productName || 'منتج'} (${item.bakerName || 'لا يوجد اسم'})`;
-        }).join(', ')}</p>
+        <p><strong>العميل:</strong> ${order.customerName || 'غير محدد'}</p>
+        <p><strong>الهاتف:</strong> ${order.customerPhone || 'غير محدد'}</p>
+        <p><strong>الإجمالي:</strong> ${order.total || 0} ج.س</p>
+        <p><strong>المنطقة:</strong> ${order.area || 'غير محدد'}</p>
+        <p><strong>الحالة:</strong> <span class="status-badge status-${order.status}">${getStatusText(order.status)}</span></p>
+        <p><strong>التاريخ:</strong> ${order.createdAt ? new Date(order.createdAt).toLocaleDateString('ar-SD') : 'غير محدد'}</p>
+        
+        <div style="margin-top: 10px; padding: 10px; background: var(--bg); border-radius: 8px;">
+          <strong>المنتجات:</strong>
+          ${(order.items || []).map(item => {
+            console.log('Item:', item);
+            return `<div style="margin: 5px 0; padding: 5px; background: white; border-radius: 4px;">
+              • ${item.qty || 1}x ${item.productName || 'منتج'} - <strong>${item.price || 0} ج.س</strong> 
+              ${item.bakerName ? `<span style="color: var(--primary);">(${item.bakerName})</span>` : '<span style="color: red;">(لا يوجد اسم التاجر)</span>'}
+            </div>`;
+          }).join('')}
+        </div>
       </div>
       <div class="item-actions">
-        <span class="status-badge status-${order.status}">
-          ${getStatusText(order.status)}
-        </span>
         ${order.status === 'pending' ? 
-          `<button class="btn btn-small btn-primary" onclick="updateOrderStatus('${order.id}', 'confirmed')">تأكيد</button>` : ''}
+          `<button class="btn btn-small btn-primary" onclick="updateOrderStatus('${order.id}', 'confirmed')">تأكيد الطلب</button>` : ''}
+        ${order.status === 'confirmed' ? 
+          `<button class="btn btn-small btn-success" onclick="updateOrderStatus('${order.id}', 'delivered')">تم التسليم</button>` : ''}
       </div>
     </div>
   `;
