@@ -22,6 +22,7 @@ There are no tests. No linter configured.
 **Required environment variables in Vercel:**
 - `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_REST_TOKEN`
+- `BLOB_READ_WRITE_TOKEN` — for product image uploads via `@vercel/blob`
 
 The `netlify/` directory and `netlify.toml` are an alternative deployment target (Netlify). Those functions still use `@netlify/blobs` and are independent of `api/`.
 
@@ -54,6 +55,7 @@ Each file maps to one endpoint by filename. Storage is Upstash Redis via `Redis.
 | `analytics.ts` | `/api/analytics` | POST (track pageview), GET (daily stats) |
 | `counts.ts` | `/api/counts` | GET/POST visitor & role counters |
 | `seed.ts` | `POST /api/seed` | Populate sample products (idempotent) |
+| `upload.ts` | `POST /api/upload` | Upload product image to Vercel Blob (baker auth required) |
 
 **Redis key namespaces:**
 - `users:` — `phone-index`, `user-{id}`, `token-{token}`

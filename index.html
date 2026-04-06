@@ -43,8 +43,10 @@
   </div>
 
   <!-- Products Grid -->
-  <div id="products-container">
-    <div class="loading"><div class="spinner"></div><p style="margin-top:12px">جاري تحميل المنتجات...</p></div>
+  <div id="products-grid" class="product-grid"></div>
+  <div id="products-state"></div>
+  <div id="load-more-wrap" style="text-align:center;margin:28px 0;display:none">
+    <button class="btn btn-secondary" id="load-more-btn" onclick="loadMore()">تحميل المزيد</button>
   </div>
 </div>
 </main>
@@ -56,39 +58,72 @@
 
 <script src="/js/app.js"></script>
 <script>
-let allProducts = [];
 let currentCategory = '';
 let currentArea = '';
+let currentSearch = '';
+let currentPage = 1;
+let isLoading = false;
 let searchTimeout = null;
 
-async function loadProducts() {
-  try {
-    // Try to seed on first visit
-    try { await fetch('/api/seed', { method: 'POST' }); } catch(e) {}
+async function loadProducts(page, append) {
+  if (isLoading) return;
+  isLoading = true;
 
-    const params = new URLSearchParams();
+  const stateEl = document.getElementById('products-state');
+  const loadMoreWrap = document.getElementById('load-more-wrap');
+
+  if (!append) {
+    document.getElementById('products-grid').innerHTML = '';
+    stateEl.innerHTML = '<div class="loading"><div class="spinner"></div><p style="margin-top:12px">جاري تحميل المنتجات...</p></div>';
+    loadMoreWrap.style.display = 'none';
+  } else {
+    document.getElementById('load-more-btn').textContent = 'جاري التحميل...';
+  }
+
+  try {
+    if (page === 1) {
+      try { await fetch('/api/seed', { method: 'POST' }); } catch(e) {}
+    }
+
+    const params = new URLSearchParams({ page, limit: 20 });
     if (currentCategory) params.set('category', currentCategory);
     if (currentArea) params.set('area', currentArea);
+    if (currentSearch) params.set('search', currentSearch);
 
     const res = await fetch('/api/products?' + params.toString());
     const data = await res.json();
-    allProducts = data.products || [];
-    renderProducts(allProducts);
+    const products = data.products || [];
+
+    stateEl.innerHTML = '';
+
+    if (!products.length && page === 1) {
+      stateEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><h3>لا توجد منتجات</h3><p>جرب تغيير الفلتر أو البحث بكلمة مختلفة</p></div>';
+      loadMoreWrap.style.display = 'none';
+    } else {
+      appendProducts(products);
+      loadMoreWrap.style.display = data.hasMore ? 'block' : 'none';
+      document.getElementById('load-more-btn').textContent = 'تحميل المزيد';
+      currentPage = page;
+    }
   } catch(e) {
-    document.getElementById('products-container').innerHTML = '<div class="empty-state"><div class="empty-icon">😕</div><h3>حدث خطأ</h3><p>لم نتمكن من تحميل المنتجات. حاول مرة أخرى.</p></div>';
+    stateEl.innerHTML = '<div class="empty-state"><div class="empty-icon">😕</div><h3>حدث خطأ</h3><p>لم نتمكن من تحميل المنتجات. حاول مرة أخرى.</p></div>';
   }
+
+  isLoading = false;
 }
 
-function renderProducts(products) {
-  const container = document.getElementById('products-container');
-  if (!products.length) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><h3>لا توجد منتجات</h3><p>جرب تغيير الفلتر أو البحث بكلمة مختلفة</p></div>';
-    return;
-  }
-
-  container.innerHTML = '<div class="product-grid">' + products.map(p => `
-    <div class="card product-card" onclick="window.location.href='/pages/product.html?id=${p.id}'">
-      <div class="product-img">${p.emoji || '🍪'}</div>
+function appendProducts(products) {
+  const grid = document.getElementById('products-grid');
+  products.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'card product-card';
+    card.onclick = () => window.location.href = '/pages/product.html?id=' + p.id;
+    card.innerHTML = `
+      <div class="product-img">
+        ${p.imageUrl
+          ? `<img src="${p.imageUrl}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius) var(--radius) 0 0">`
+          : p.emoji || '🍪'}
+      </div>
       <div class="card-body">
         <div class="product-name">${p.name}</div>
         <div class="product-baker">👩‍🍳 ${p.bakerName}</div>
@@ -98,37 +133,38 @@ function renderProducts(products) {
           <span class="product-category">${App.categoryName(p.category)}</span>
         </div>
       </div>
-    </div>
-  `).join('') + '</div>';
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function loadMore() {
+  loadProducts(currentPage + 1, true);
 }
 
 function filterCategory(el) {
   document.querySelectorAll('[data-category]').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   currentCategory = el.dataset.category;
-  loadProducts();
+  loadProducts(1, false);
 }
 
 function filterArea(el) {
   document.querySelectorAll('[data-area]').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   currentArea = el.dataset.area;
-  loadProducts();
+  loadProducts(1, false);
 }
 
 document.getElementById('search').addEventListener('input', function(e) {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
-    const q = e.target.value.trim().toLowerCase();
-    if (!q) { renderProducts(allProducts); return; }
-    const filtered = allProducts.filter(p =>
-      p.name.includes(q) || p.bakerName.includes(q) || p.description.includes(q)
-    );
-    renderProducts(filtered);
-  }, 300);
+    currentSearch = e.target.value.trim();
+    loadProducts(1, false);
+  }, 350);
 });
 
-loadProducts();
+loadProducts(1, false);
 </script>
 </body>
 </html>

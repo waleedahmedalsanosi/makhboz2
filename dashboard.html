@@ -277,8 +277,16 @@
         <label class="form-label">الوصف</label>
         <textarea class="form-input" id="product-description" rows="3"></textarea>
       </div>
+      <div class="form-group">
+        <label class="form-label">صورة المنتج (اختياري)</label>
+        <input type="file" class="form-input" id="product-image" accept="image/jpeg,image/png,image/webp" style="padding:8px">
+        <p style="font-size:12px;color:var(--text-muted);margin-top:4px">JPEG / PNG / WebP — بحد أقصى 5 ميجابايت</p>
+        <div id="image-preview" style="margin-top:10px;display:none">
+          <img id="image-preview-img" style="max-width:200px;max-height:150px;border-radius:8px;object-fit:cover">
+        </div>
+      </div>
       <div style="display: flex; gap: 10px;">
-        <button type="submit" class="btn btn-primary">إضافة المنتج</button>
+        <button type="submit" class="btn btn-primary" id="add-product-btn">إضافة المنتج</button>
         <button type="button" class="btn btn-secondary" onclick="hideAddProductForm()">إلغاء</button>
       </div>
     </form>
@@ -541,19 +549,43 @@ function hideAddProductForm() {
 
 async function handleAddProduct(event) {
   event.preventDefault();
-  
+
+  const btn = document.getElementById('add-product-btn');
+  btn.disabled = true;
+  btn.textContent = 'جاري الإضافة...';
+
   try {
+    // Upload image if selected
+    let imageUrl = '';
+    const imageFile = document.getElementById('product-image').files[0];
+    if (imageFile) {
+      btn.textContent = 'جاري رفع الصورة...';
+      const formData = new FormData();
+      formData.append('image', imageFile);
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('makhboz_token') },
+        body: formData
+      });
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json();
+        throw new Error(err.error || 'فشل رفع الصورة');
+      }
+      const uploadData = await uploadRes.json();
+      imageUrl = uploadData.url;
+      btn.textContent = 'جاري الإضافة...';
+    }
+
     const productData = {
       name: document.getElementById('product-name').value,
       description: document.getElementById('product-description').value,
       price: parseFloat(document.getElementById('product-price').value),
       unit: document.getElementById('product-unit').value,
       category: document.getElementById('product-category').value,
-      minOrder: 1
+      minOrder: 1,
+      imageUrl
     };
-    
-    console.log('Adding product:', productData);
-    
+
     const response = await fetch('/api/products', {
       method: 'POST',
       headers: {
@@ -562,18 +594,13 @@ async function handleAddProduct(event) {
       },
       body: JSON.stringify(productData)
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || 'فشل إضافة المنتج');
     }
-    
-    const newProduct = await response.json();
-    console.log('Product added:', newProduct);
-    
+
     showSuccess('تم إضافة المنتج بنجاح!');
-    
-    // Reset form
     hideAddProductForm();
     
     // Reload products
@@ -582,8 +609,30 @@ async function handleAddProduct(event) {
   } catch (error) {
     console.error('Error adding product:', error);
     showError('فشل إضافة المنتج: ' + error.message);
+    btn.disabled = false;
+    btn.textContent = 'إضافة المنتج';
   }
 }
+
+// Image preview
+document.addEventListener('DOMContentLoaded', function() {
+  const imageInput = document.getElementById('product-image');
+  if (imageInput) {
+    imageInput.addEventListener('change', function() {
+      const file = this.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          document.getElementById('image-preview-img').src = e.target.result;
+          document.getElementById('image-preview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      } else {
+        document.getElementById('image-preview').style.display = 'none';
+      }
+    });
+  }
+});
 
 async function deleteProduct(productId) {
   if (!confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;

@@ -150,7 +150,8 @@ function renderCheckout() {
         <div style="font-size:64px;margin-bottom:12px">✅</div>
         <h3>تم تأكيد الطلب بنجاح!</h3>
         <p style="color:var(--gray);margin:12px 0" id="order-id-display"></p>
-        <p style="color:var(--gray);margin-bottom:20px">سيتم التواصل معك عبر واتساب لتأكيد موعد التوصيل</p>
+        <p style="color:var(--gray);margin-bottom:16px">تواصلي مع الصانعة عبر واتساب لتأكيد موعد التوصيل</p>
+        <div id="whatsapp-links" style="display:none;flex-direction:column;gap:8px;margin-bottom:16px;align-items:center"></div>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
           <a href="/pages/orders.html" class="btn btn-primary">متابعة طلباتي</a>
           <a href="/" class="btn btn-secondary">العودة للمتجر</a>
@@ -213,6 +214,22 @@ async function placeOrder() {
 
     App.clearCart();
     document.getElementById('order-id-display').textContent = 'رقم الطلب: ' + data.id;
+
+    // Build WhatsApp links for each baker
+    const waLinksEl = document.getElementById('whatsapp-links');
+    if (waLinksEl && data.bakerPhones && Object.keys(data.bakerPhones).length) {
+      const msg = encodeURIComponent(`مرحباً، لدي طلب جديد من مخبوز 🍪\nرقم الطلب: ${data.id}`);
+      const links = Object.entries(data.bakerPhones).map(([bakerId, phone]) => {
+        const baker = data.items?.find(i => i.bakerId === bakerId);
+        const name = baker ? baker.bakerName : 'الصانعة';
+        return `<a href="https://wa.me/${phone}?text=${msg}" target="_blank" class="btn btn-secondary" style="background:#25D366;color:white;border-color:#25D366">
+          💬 تواصلي مع ${name} عبر واتساب
+        </a>`;
+      }).join('');
+      waLinksEl.innerHTML = links;
+      waLinksEl.style.display = 'flex';
+    }
+
     document.getElementById('success-modal').classList.add('show');
   } catch(e) {
     console.error('Order error:', e);

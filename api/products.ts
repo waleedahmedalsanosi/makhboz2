@@ -33,22 +33,40 @@ export default async function handler(req: Request) {
     const area = url.searchParams.get('area') || ''
     const search = url.searchParams.get('search') || ''
     const bakerId = url.searchParams.get('bakerId') || ''
+    const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 100)
+    const page = Math.max(parseInt(url.searchParams.get('page') || '1'), 1)
 
     const productIds = (await redis.get<string[]>('products:products-index')) || []
 
-    const products: any[] = []
-    for (const pid of productIds) {
-      const p = await redis.get<Record<string, any>>(`products:product-${pid}`)
-      if (!p || !p.available) continue
-      if (category && p.category !== category) continue
-      if (area && p.area !== area) continue
-      if (bakerId && p.bakerId !== bakerId) continue
-      if (search && !p.name.includes(search) && !p.description.includes(search) && !p.bakerName.includes(search)) continue
-      products.push(p)
+    // Batch-fetch all products in one round-trip
+    let products: Record<string, any>[] = []
+    if (productIds.length > 0) {
+      const keys = productIds.map(pid => `products:product-${pid}`)
+      const results = await redis.mget<Record<string, any>[]>(...keys)
+      products = results.filter(Boolean) as Record<string, any>[]
     }
 
-    products.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    return Response.json({ products })
+    // Apply filters
+    const filtered = products.filter(p => {
+      if (!p.available) return false
+      if (category && p.category !== category) return false
+      if (area && p.area !== area) return false
+      if (bakerId && p.bakerId !== bakerId) return false
+      if (search && !p.name.includes(search) && !p.description.includes(search) && !p.bakerName.includes(search)) return false
+      return true
+    })
+
+    filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+    const start = (page - 1) * limit
+    const paginated = filtered.slice(start, start + limit)
+
+    return Response.json({
+      products: paginated,
+      total: filtered.length,
+      page,
+      hasMore: start + limit < filtered.length
+    })
   }
 
   if (req.method === 'POST') {
@@ -80,6 +98,7 @@ export default async function handler(req: Request) {
       occasions: body.occasions || [],
       area: user.area,
       emoji: getCategoryEmoji(category),
+      imageUrl: body.imageUrl || '',
       createdAt: new Date().toISOString()
     }
 

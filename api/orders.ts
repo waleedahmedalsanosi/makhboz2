@@ -35,11 +35,14 @@ export default async function handler(req: Request) {
     const indexKey = user.role === 'baker' ? `orders:baker-orders-${user.id}` : `orders:customer-orders-${user.id}`
     const orderIds = (await redis.get<string[]>(indexKey)) || []
 
-    const orders: any[] = []
-    for (const oid of orderIds) {
-      const o = await redis.get<Record<string, any>>(`orders:order-${oid}`)
-      if (o) orders.push(o)
+    // Batch-fetch all orders in one round-trip
+    let orders: Record<string, any>[] = []
+    if (orderIds.length > 0) {
+      const keys = orderIds.map(oid => `orders:order-${oid}`)
+      const results = await redis.mget<Record<string, any>[]>(...keys)
+      orders = results.filter(Boolean) as Record<string, any>[]
     }
+
     orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     return Response.json({ orders })
   }
@@ -64,18 +67,37 @@ export default async function handler(req: Request) {
       return Response.json(order)
     }
 
+    if (body.action === 'cancelOrder') {
+      const { orderId } = body
+      const order = await redis.get<Record<string, any>>(`orders:order-${orderId}`)
+      if (!order) return Response.json({ error: 'الطلب غير موجود' }, { status: 404 })
+      if (order.customerId !== user.id) return Response.json({ error: 'غير مصرح' }, { status: 403 })
+      if (!['pending', 'confirmed'].includes(order.status)) {
+        return Response.json({ error: 'لا يمكن إلغاء الطلب بعد بدء التحضير' }, { status: 400 })
+      }
+      order.status = 'cancelled'
+      order.updatedAt = new Date().toISOString()
+      await redis.set(`orders:order-${orderId}`, order)
+      return Response.json(order)
+    }
+
     const { items, area, address, paymentMethod, notes } = body
     if (!items || !items.length) return Response.json({ error: 'السلة فارغة' }, { status: 400 })
     if (!address) return Response.json({ error: 'العنوان مطلوب' }, { status: 400 })
 
+    // Batch-fetch all products at once
+    const productKeys = items.map((item: any) => `products:product-${item.id}`)
+    const productResults = await redis.mget<Record<string, any>[]>(...productKeys)
+
     let total = 0
     const validatedItems: any[] = []
     const bakerIds = new Set<string>()
+    const bakerPhones: Record<string, string> = {}
 
-    for (const item of items) {
-      const product = await redis.get<Record<string, any>>(`products:product-${item.id}`)
+    for (let i = 0; i < items.length; i++) {
+      const product = productResults[i]
       if (!product || !product.available) continue
-      const itemTotal = product.price * item.qty
+      const itemTotal = product.price * items[i].qty
       total += itemTotal
       bakerIds.add(product.bakerId)
       validatedItems.push({
@@ -85,12 +107,18 @@ export default async function handler(req: Request) {
         bakerName: product.bakerName,
         price: product.price,
         unit: product.unit,
-        qty: item.qty,
+        qty: items[i].qty,
         itemTotal
       })
     }
 
     if (!validatedItems.length) return Response.json({ error: 'لم يتم العثور على منتجات صالحة' }, { status: 400 })
+
+    // Fetch baker phones for WhatsApp links
+    for (const bakerId of bakerIds) {
+      const baker = await redis.get<Record<string, any>>(`users:user-${bakerId}`)
+      if (baker?.phone) bakerPhones[bakerId] = baker.phone
+    }
 
     const orderId = generateId()
     const order = {
@@ -105,6 +133,7 @@ export default async function handler(req: Request) {
       paymentMethod: paymentMethod || 'cash',
       notes: notes || '',
       status: 'pending',
+      bakerPhones,
       createdAt: new Date().toISOString()
     }
 
