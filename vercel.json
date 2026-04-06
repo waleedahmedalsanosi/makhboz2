@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "api/*.mts": {
-      "runtime": "@vercel/node"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/(.*)",

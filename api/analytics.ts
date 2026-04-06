@@ -1,14 +1,6 @@
-import { getStore } from '@netlify/blobs'
-import type { Config } from '@netlify/functions'
+import { Redis } from '@upstash/redis'
 
-const STORE_NAME = 'site-analytics'
-
-interface PageView {
-  path: string
-  timestamp: string
-  referrer: string
-  userAgent: string
-}
+const redis = Redis.fromEnv()
 
 interface DailyStats {
   date: string
@@ -18,8 +10,7 @@ interface DailyStats {
   hourly: number[]
 }
 
-export default async (req: Request) => {
-  const store = getStore({ name: STORE_NAME, consistency: 'strong' })
+export default async function handler(req: Request) {
   const url = new URL(req.url)
 
   if (req.method === 'POST') {
@@ -28,7 +19,7 @@ export default async (req: Request) => {
     const dateKey = now.toISOString().slice(0, 10)
     const hour = now.getUTCHours()
 
-    const daily = (await store.get(`daily:${dateKey}`, { type: 'json' }) as DailyStats | null) || {
+    const daily = (await redis.get<DailyStats>(`analytics:daily:${dateKey}`)) || {
       date: dateKey,
       views: 0,
       uniquePaths: {},
@@ -43,12 +34,11 @@ export default async (req: Request) => {
     }
     daily.hourly[hour] = (daily.hourly[hour] || 0) + 1
 
-    await store.setJSON(`daily:${dateKey}`, daily)
+    await redis.set(`analytics:daily:${dateKey}`, daily)
 
-    // Track total all-time views
-    const totals = (await store.get('totals', { type: 'json' }) as Record<string, number> | null) || { allTimeViews: 0 }
+    const totals = (await redis.get<Record<string, number>>('analytics:totals')) || { allTimeViews: 0 }
     totals.allTimeViews += 1
-    await store.setJSON('totals', totals)
+    await redis.set('analytics:totals', totals)
 
     return Response.json({ ok: true })
   }
@@ -63,7 +53,7 @@ export default async (req: Request) => {
       const d = new Date(now)
       d.setUTCDate(d.getUTCDate() - i)
       const dateKey = d.toISOString().slice(0, 10)
-      const daily = await store.get(`daily:${dateKey}`, { type: 'json' }) as DailyStats | null
+      const daily = await redis.get<DailyStats>(`analytics:daily:${dateKey}`)
       if (daily) {
         results.push(daily)
       } else {
@@ -71,14 +61,10 @@ export default async (req: Request) => {
       }
     }
 
-    const totals = (await store.get('totals', { type: 'json' }) as Record<string, number> | null) || { allTimeViews: 0 }
+    const totals = (await redis.get<Record<string, number>>('analytics:totals')) || { allTimeViews: 0 }
 
     return Response.json({ days: results.reverse(), totals })
   }
 
   return new Response('Method not allowed', { status: 405 })
-}
-
-export const config: Config = {
-  path: '/api/analytics',
 }

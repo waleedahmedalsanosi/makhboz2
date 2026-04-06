@@ -1,7 +1,6 @@
-import { getStore } from '@netlify/blobs'
-import type { Config } from '@netlify/functions'
+import { Redis } from '@upstash/redis'
 
-const STORE_NAME = 'marketplace-users'
+const redis = Redis.fromEnv()
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
@@ -21,12 +20,11 @@ function generateToken(userId: string): string {
   return userId + '.' + Date.now().toString(36) + '.' + Math.random().toString(36).slice(2, 10)
 }
 
-export default async (req: Request) => {
+export default async function handler(req: Request) {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
   }
 
-  const store = getStore({ name: STORE_NAME, consistency: 'strong' })
   const body = await req.json() as Record<string, string>
   const { action } = body
 
@@ -42,8 +40,7 @@ export default async (req: Request) => {
       return Response.json({ error: 'كلمة المرور يجب أن تكون 4 أحرف على الأقل' }, { status: 400 })
     }
 
-    // Check if phone already registered
-    const existingIndex = await store.get('phone-index', { type: 'json' }) as Record<string, string> | null || {}
+    const existingIndex = (await redis.get<Record<string, string>>('users:phone-index')) || {}
     if (existingIndex[phone]) {
       return Response.json({ error: 'رقم الهاتف مسجل مسبقاً. الرجاء تسجيل الدخول' }, { status: 409 })
     }
@@ -60,12 +57,12 @@ export default async (req: Request) => {
       createdAt: new Date().toISOString()
     }
 
-    await store.setJSON(`user-${userId}`, user)
+    await redis.set(`users:user-${userId}`, user)
     existingIndex[phone] = userId
-    await store.setJSON('phone-index', existingIndex)
+    await redis.set('users:phone-index', existingIndex)
 
     const token = generateToken(userId)
-    await store.setJSON(`token-${token}`, { userId, createdAt: new Date().toISOString() })
+    await redis.set(`users:token-${token}`, { userId, createdAt: new Date().toISOString() })
 
     const { passwordHash, ...safeUser } = user
     return Response.json({ user: safeUser, token })
@@ -77,19 +74,19 @@ export default async (req: Request) => {
       return Response.json({ error: 'الرجاء إدخال رقم الهاتف وكلمة المرور' }, { status: 400 })
     }
 
-    const phoneIndex = await store.get('phone-index', { type: 'json' }) as Record<string, string> | null || {}
+    const phoneIndex = (await redis.get<Record<string, string>>('users:phone-index')) || {}
     const userId = phoneIndex[phone]
     if (!userId) {
       return Response.json({ error: 'رقم الهاتف غير مسجل' }, { status: 401 })
     }
 
-    const user = await store.get(`user-${userId}`, { type: 'json' }) as Record<string, any> | null
+    const user = await redis.get<Record<string, any>>(`users:user-${userId}`)
     if (!user || user.passwordHash !== simpleHash(password)) {
       return Response.json({ error: 'كلمة المرور غير صحيحة' }, { status: 401 })
     }
 
     const token = generateToken(userId)
-    await store.setJSON(`token-${token}`, { userId, createdAt: new Date().toISOString() })
+    await redis.set(`users:token-${token}`, { userId, createdAt: new Date().toISOString() })
 
     const { passwordHash, ...safeUser } = user
     return Response.json({ user: safeUser, token })
@@ -98,17 +95,13 @@ export default async (req: Request) => {
   if (action === 'verify') {
     const token = body.token
     if (!token) return Response.json({ valid: false })
-    const tokenData = await store.get(`token-${token}`, { type: 'json' }) as Record<string, string> | null
+    const tokenData = await redis.get<Record<string, string>>(`users:token-${token}`)
     if (!tokenData) return Response.json({ valid: false })
-    const user = await store.get(`user-${tokenData.userId}`, { type: 'json' }) as Record<string, any> | null
+    const user = await redis.get<Record<string, any>>(`users:user-${tokenData.userId}`)
     if (!user) return Response.json({ valid: false })
     const { passwordHash, ...safeUser } = user
     return Response.json({ valid: true, user: safeUser })
   }
 
   return Response.json({ error: 'Invalid action' }, { status: 400 })
-}
-
-export const config: Config = {
-  path: '/api/auth',
 }

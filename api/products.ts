@@ -1,8 +1,6 @@
-import { getStore } from '@netlify/blobs'
-import type { Config } from '@netlify/functions'
+import { Redis } from '@upstash/redis'
 
-const STORE_NAME = 'marketplace-products'
-const USERS_STORE = 'marketplace-users'
+const redis = Redis.fromEnv()
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
@@ -13,40 +11,34 @@ async function getUser(req: Request) {
   const token = auth.replace('Bearer ', '')
   if (!token) return null
 
-  const usersStore = getStore({ name: USERS_STORE, consistency: 'strong' })
-  const tokenData = await usersStore.get(`token-${token}`, { type: 'json' }) as Record<string, string> | null
+  const tokenData = await redis.get<Record<string, string>>(`users:token-${token}`)
   if (!tokenData) return null
 
-  const user = await usersStore.get(`user-${tokenData.userId}`, { type: 'json' }) as Record<string, any> | null
-  return user
+  return await redis.get<Record<string, any>>(`users:user-${tokenData.userId}`)
 }
 
-export default async (req: Request) => {
-  const store = getStore({ name: STORE_NAME, consistency: 'strong' })
+export default async function handler(req: Request) {
   const url = new URL(req.url)
 
   if (req.method === 'GET') {
     const id = url.searchParams.get('id')
 
-    // Single product
     if (id) {
-      const product = await store.get(`product-${id}`, { type: 'json' })
+      const product = await redis.get(`products:product-${id}`)
       if (!product) return Response.json({ error: 'المنتج غير موجود' }, { status: 404 })
       return Response.json(product)
     }
 
-    // List products with filters
     const category = url.searchParams.get('category') || ''
     const area = url.searchParams.get('area') || ''
     const search = url.searchParams.get('search') || ''
     const bakerId = url.searchParams.get('bakerId') || ''
 
-    const indexData = await store.get('products-index', { type: 'json' }) as string[] | null
-    const productIds = indexData || []
+    const productIds = (await redis.get<string[]>('products:products-index')) || []
 
     const products: any[] = []
     for (const pid of productIds) {
-      const p = await store.get(`product-${pid}`, { type: 'json' }) as Record<string, any> | null
+      const p = await redis.get<Record<string, any>>(`products:product-${pid}`)
       if (!p || !p.available) continue
       if (category && p.category !== category) continue
       if (area && p.area !== area) continue
@@ -91,12 +83,11 @@ export default async (req: Request) => {
       createdAt: new Date().toISOString()
     }
 
-    await store.setJSON(`product-${productId}`, product)
+    await redis.set(`products:product-${productId}`, product)
 
-    // Update index
-    const index = (await store.get('products-index', { type: 'json' }) as string[] | null) || []
+    const index = (await redis.get<string[]>('products:products-index')) || []
     index.push(productId)
-    await store.setJSON('products-index', index)
+    await redis.set('products:products-index', index)
 
     return Response.json(product)
   }
@@ -109,7 +100,7 @@ export default async (req: Request) => {
     const { id } = body
     if (!id) return Response.json({ error: 'معرف المنتج مطلوب' }, { status: 400 })
 
-    const product = await store.get(`product-${id}`, { type: 'json' }) as Record<string, any> | null
+    const product = await redis.get<Record<string, any>>(`products:product-${id}`)
     if (!product) return Response.json({ error: 'المنتج غير موجود' }, { status: 404 })
     if (product.bakerId !== user.id) return Response.json({ error: 'غير مصرح بتعديل هذا المنتج' }, { status: 403 })
 
@@ -117,7 +108,7 @@ export default async (req: Request) => {
     if (body.price) updated.price = Number(body.price)
     if (body.minOrder) updated.minOrder = Number(body.minOrder)
 
-    await store.setJSON(`product-${id}`, updated)
+    await redis.set(`products:product-${id}`, updated)
     return Response.json(updated)
   }
 
@@ -128,13 +119,12 @@ export default async (req: Request) => {
     const id = url.searchParams.get('id')
     if (!id) return Response.json({ error: 'معرف المنتج مطلوب' }, { status: 400 })
 
-    const product = await store.get(`product-${id}`, { type: 'json' }) as Record<string, any> | null
+    const product = await redis.get<Record<string, any>>(`products:product-${id}`)
     if (!product) return Response.json({ error: 'المنتج غير موجود' }, { status: 404 })
     if (product.bakerId !== user.id) return Response.json({ error: 'غير مصرح' }, { status: 403 })
 
-    // Soft delete - mark unavailable
     product.available = false
-    await store.setJSON(`product-${id}`, product)
+    await redis.set(`products:product-${id}`, product)
 
     return Response.json({ success: true })
   }
@@ -145,8 +135,4 @@ export default async (req: Request) => {
 function getCategoryEmoji(cat: string): string {
   const map: Record<string, string> = { kaak: '🍪', petitfour: '🧁', biscuit: '🍘', manin: '🥮' }
   return map[cat] || '🍪'
-}
-
-export const config: Config = {
-  path: '/api/products',
 }

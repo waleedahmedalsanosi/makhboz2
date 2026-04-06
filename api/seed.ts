@@ -1,7 +1,6 @@
-import { getStore } from '@netlify/blobs'
-import type { Config } from '@netlify/functions'
+import { Redis } from '@upstash/redis'
 
-const STORE_NAME = 'marketplace-products'
+const redis = Redis.fromEnv()
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
@@ -27,18 +26,14 @@ const sampleProducts = [
   { name: 'بيتفور بالتمر والمكسرات', category: 'petitfour', description: 'بيتفور فاخر محشو بعجوة التمر ومزين بالمكسرات — أناقة ومذاق.', price: 8000, unit: 'kg', minOrder: 1, occasions: ['أعراس', 'هدايا', 'المولد النبوي'], bakerName: 'أم عمر', area: 'khartoum-north' },
 ]
 
-// Maps baker names to consistent IDs
 const bakerMap: Record<string, string> = {}
 
-export default async (req: Request) => {
+export default async function handler(req: Request) {
   if (req.method !== 'POST') {
     return new Response('POST only', { status: 405 })
   }
 
-  const store = getStore({ name: STORE_NAME, consistency: 'strong' })
-
-  // Check if already seeded
-  const existingIndex = await store.get('products-index', { type: 'json' }) as string[] | null
+  const existingIndex = await redis.get<string[]>('products:products-index')
   if (existingIndex && existingIndex.length > 0) {
     return Response.json({ message: 'البيانات موجودة مسبقاً', count: existingIndex.length })
   }
@@ -46,7 +41,6 @@ export default async (req: Request) => {
   const productIds: string[] = []
 
   for (const sample of sampleProducts) {
-    // Generate consistent baker IDs
     if (!bakerMap[sample.bakerName]) {
       bakerMap[sample.bakerName] = 'baker-' + generateId()
     }
@@ -70,15 +64,11 @@ export default async (req: Request) => {
       createdAt: new Date(Date.now() - Math.random() * 7 * 86400000).toISOString()
     }
 
-    await store.setJSON(`product-${productId}`, product)
+    await redis.set(`products:product-${productId}`, product)
     productIds.push(productId)
   }
 
-  await store.setJSON('products-index', productIds)
+  await redis.set('products:products-index', productIds)
 
   return Response.json({ message: 'تم إضافة المنتجات بنجاح', count: productIds.length })
-}
-
-export const config: Config = {
-  path: '/api/seed',
 }
