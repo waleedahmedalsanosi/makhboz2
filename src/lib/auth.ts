@@ -1,5 +1,5 @@
 import NextAuth from 'next-auth'
-import { PrismaAdapter } from '@next-auth/prisma-adapter'
+import { PrismaAdapter } from '@auth/prisma-adapter'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
@@ -14,8 +14,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: 'كلمة المرور', type: 'password' },
       },
       async authorize(credentials) {
-        const email = credentials?.email
-        const password = credentials?.password
+        const email = credentials?.email as string | undefined
+        const password = credentials?.password as string | undefined
 
         if (!email || !password) {
           return null
@@ -59,13 +59,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       session.user.id = token.sub!
-      session.user.role = token.role
-      session.user.bakerId = token.bakerId
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      session.user.role = (token as any).role
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      session.user.bakerId = (token as any).bakerId
       return session
     },
   },
   pages: {
-    signIn: '/(auth)/login',
-    error: '/(auth)/login',
+    signIn: '/login',
+    error: '/login',
   },
 })
