@@ -38,7 +38,7 @@ export function PaymentProofUpload({ orderId }: { orderId: string }) {
     })
 
     if (!uploadRes.ok) {
-      setError('فشل رفع الصورة — تأكد من إعداد Cloudinary')
+      setError('فشل رفع الصورة')
       setUploading(false)
       return
     }
@@ -64,7 +64,7 @@ export function PaymentProofUpload({ orderId }: { orderId: string }) {
 
   return (
     <div className="bg-white rounded-xl border border-amber-100 p-5">
-      <h2 className="font-semibold text-gray-700 mb-3">رفع إثبات الدفع</h2>
+      <h2 className="font-semibold text-gray-700 mb-1">رفع إثبات الدفع</h2>
       <p className="text-sm text-gray-500 mb-4">
         بعد إتمام التحويل البنكي، أرفق صورة الإيصال
       </p>
