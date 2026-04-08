@@ -1,0 +1,138 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  phone     String?
+  role      UserRole @default(BUYER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  baker  Baker[] @relation("UserBaker")
+  orders Order[]
+
+  @@map("users")
+}
+
+model Baker {
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  bio          String?
+  area         String
+  imageUrl     String?
+  bankName     String?
+  bankAccount  String?
+  rating       Float   @default(0)
+  isVerified   Boolean @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user     User      @relation("UserBaker", fields: [userId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@map("bakers")
+}
+
+model Product {
+  id           String        @id @default(cuid())
+  name         String
+  description  String?
+  price        Float
+  category     ProductCategory
+  area         String
+  unit         String        @default("piece")
+  imageUrl     String?
+  isAvailable  Boolean       @default(true)
+  bakerId      String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  baker       Baker       @relation(fields: [bakerId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+
+  @@map("products")
+}
+
+model Order {
+  id              String         @id @default(cuid())
+  userId          String
+  status          OrderStatus    @default(PENDING)
+  paymentStatus   PaymentStatus  @default(AWAITING_PROOF)
+  paymentProofUrl String?
+  paymentNote     String?
+  deliveryAddress String
+  total           Float
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items  OrderItem[]
+  review Review?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("reviews")
+}
+
+enum UserRole {
+  BUYER
+  BAKER
+  ADMIN
+}
+
+enum ProductCategory {
+  KAAK
+  PETITFOUR
+  BISCUIT
+  MANIN
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PREPARING
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  AWAITING_PROOF
+  PROOF_SUBMITTED
+  VERIFIED
+  REJECTED
+}
