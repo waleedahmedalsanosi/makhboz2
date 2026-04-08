@@ -4,6 +4,7 @@ import { redirect, notFound } from 'next/navigation'
 import { formatPrice } from '@/lib/utils'
 import Link from 'next/link'
 import { PaymentProofUpload } from './PaymentProofUpload'
+import { ReviewForm } from './ReviewForm'
 
 const statusLabels: Record<string, string> = {
   PENDING: 'قيد الانتظار',
@@ -39,6 +40,7 @@ export default async function OrderDetailPage({
           },
         },
       },
+      review: true,
     },
   })
 
@@ -145,6 +147,14 @@ export default async function OrderDetailPage({
             </a>
           </div>
         ) : null}
+
+        {/* Review form */}
+        {order.status === 'DELIVERED' && (
+          <ReviewForm
+            orderId={order.id}
+            existingRating={order.review?.rating}
+          />
+        )}
       </main>
     </div>
   )

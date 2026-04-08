@@ -20,6 +20,7 @@ export default async function DashboardLayout({
         <NavLink href="/dashboard">الرئيسية</NavLink>
         <NavLink href="/dashboard/products">المنتجات</NavLink>
         <NavLink href="/dashboard/orders">الطلبات</NavLink>
+        <NavLink href="/dashboard/profile">الملف الشخصي</NavLink>
         <div className="mt-auto">
           <Link
             href="/api/auth/signout"
