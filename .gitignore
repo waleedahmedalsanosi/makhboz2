@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Security — block accidental debug/test files
+test.html
+test-*.html
+netlify/
+*.local.html
