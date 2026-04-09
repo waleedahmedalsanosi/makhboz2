@@ -15,6 +15,16 @@ export const proxy = auth((req) => {
     }
   }
 
+  // Protect /admin — ADMIN only
+  if (pathname.startsWith('/admin')) {
+    if (!session) {
+      return NextResponse.redirect(new URL('/login', req.url))
+    }
+    if (session.user.role !== 'ADMIN') {
+      return NextResponse.redirect(new URL('/', req.url))
+    }
+  }
+
   // Redirect logged-in users away from auth pages
   if ((pathname === '/login' || pathname === '/register') && session) {
     return NextResponse.redirect(new URL('/', req.url))
@@ -22,5 +32,5 @@ export const proxy = auth((req) => {
 })
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/register'],
+  matcher: ['/dashboard/:path*', '/admin/:path*', '/login', '/register'],
 }

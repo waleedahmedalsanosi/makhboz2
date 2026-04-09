@@ -75,7 +75,15 @@ export default async function DashboardProductsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-left">
-                    <DeleteProductButton productId={product.id} />
+                    <div className="flex items-center gap-2 justify-end">
+                      <Link
+                        href={`/dashboard/products/${product.id}/edit`}
+                        className="text-xs text-amber-600 hover:text-amber-800 font-medium"
+                      >
+                        تعديل
+                      </Link>
+                      <DeleteProductButton productId={product.id} />
+                    </div>
                   </td>
                 </tr>
               ))}

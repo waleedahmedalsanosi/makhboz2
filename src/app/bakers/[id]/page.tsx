@@ -62,7 +62,14 @@ export default async function BakerPage({
               )}
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{baker.user.name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold text-gray-900">{baker.user.name}</h1>
+                {baker.isVerified && (
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                    ✓ موثق
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-gray-500">{baker.area}</p>
               <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
                 {baker.rating > 0 && (
