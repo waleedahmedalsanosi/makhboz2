@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { formatPrice } from '@/lib/utils'
 import { DeleteProductButton } from './DeleteProductButton'
+import { ToggleAvailabilityButton } from './ToggleAvailabilityButton'
+import { SkeletonProductGrid } from '@/components/Skeleton';
 
 export default async function DashboardProductsPage() {
   const session = await auth()
@@ -45,42 +47,7 @@ export default async function DashboardProductsPage() {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600">
-              <tr>
-                <th className="text-right px-4 py-3 font-medium">المنتج</th>
-                <th className="text-right px-4 py-3 font-medium">الفئة</th>
-                <th className="text-right px-4 py-3 font-medium">السعر</th>
-                <th className="text-right px-4 py-3 font-medium">الحالة</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {products.map((product) => (
-                <tr key={product.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-800">{product.name}</td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {categoryLabels[product.category] ?? product.category}
-                  </td>
-                  <td className="px-4 py-3 text-gray-800">{formatPrice(product.price)}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        product.isAvailable
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                    >
-                      {product.isAvailable ? 'متاح' : 'غير متاح'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-left">
-                    <DeleteProductButton productId={product.id} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <SkeletonProductGrid />
         </div>
       )}
     </div>

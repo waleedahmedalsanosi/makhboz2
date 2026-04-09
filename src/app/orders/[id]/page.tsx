@@ -1,9 +1,11 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { redirect, notFound } from 'next/navigation'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, formatDate } from '@/lib/utils'
 import Link from 'next/link'
 import { PaymentProofUpload } from './PaymentProofUpload'
+import { ReviewForm } from './ReviewForm'
+import { CancelButton } from './CancelButton'
 
 const statusLabels: Record<string, string> = {
   PENDING: 'قيد الانتظار',
@@ -39,6 +41,7 @@ export default async function OrderDetailPage({
           },
         },
       },
+      review: true,
     },
   })
 
@@ -67,6 +70,7 @@ export default async function OrderDetailPage({
               <p className="font-semibold text-gray-800 mt-0.5">
                 {statusLabels[order.status] ?? order.status}
               </p>
+              <p className="text-xs text-gray-400 mt-1">{formatDate(order.createdAt)}</p>
             </div>
             <div className="text-left">
               <p className="text-sm text-gray-500">حالة الدفع</p>
@@ -145,6 +149,21 @@ export default async function OrderDetailPage({
             </a>
           </div>
         ) : null}
+
+        {/* Cancel order */}
+        {order.status === 'PENDING' && (
+          <div className="flex justify-end">
+            <CancelButton orderId={order.id} />
+          </div>
+        )}
+
+        {/* Review form */}
+        {order.status === 'DELIVERED' && (
+          <ReviewForm
+            orderId={order.id}
+            existingRating={order.review?.rating}
+          />
+        )}
       </main>
     </div>
   )

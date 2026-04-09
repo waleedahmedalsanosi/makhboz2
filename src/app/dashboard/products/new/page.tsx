@@ -1,11 +1,12 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { productSchema } from '@/lib/validations'
 import { useState } from 'react'
 import type { z } from 'zod'
+import { ProductImageUpload } from '../ProductImageUpload'
 
 type ProductData = z.input<typeof productSchema>
 
@@ -23,6 +24,7 @@ export default function NewProductPage() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<ProductData>({
     resolver: zodResolver(productSchema),
@@ -31,10 +33,15 @@ export default function NewProductPage() {
 
   async function onSubmit(data: ProductData) {
     setError(null)
+    const payload = {
+      ...data,
+      imageUrl: data.imageUrl || undefined,
+      description: data.description || undefined,
+    }
     const res = await fetch('/api/products', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     })
     const json = await res.json()
     if (!res.ok) {
@@ -50,18 +57,27 @@ export default function NewProductPage() {
       <h1 className="text-xl font-bold text-gray-800 mb-6">إضافة منتج جديد</h1>
 
       <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <Field label="اسم المنتج" error={errors.name?.message}>
-          <input
-            {...register('name')}
-            className="input"
-            placeholder="كعك بالسمسم"
+        <Field label="صورة المنتج">
+          <Controller
+            name="imageUrl"
+            control={control}
+            render={({ field }) => (
+              <ProductImageUpload
+                value={field.value ?? ''}
+                onChange={field.onChange}
+              />
+            )}
           />
+        </Field>
+
+        <Field label="اسم المنتج" error={errors.name?.message}>
+          <input {...register('name')} className="input" placeholder="كعك بالسمسم" />
         </Field>
 
         <Field label="الوصف (اختياري)" error={errors.description?.message}>
           <textarea
             {...register('description')}
-            className="input min-h-[80px] resize-none"
+            className="input min-h-20 resize-none"
             placeholder="وصف قصير للمنتج..."
           />
         </Field>
@@ -79,11 +95,7 @@ export default function NewProductPage() {
           </Field>
 
           <Field label="الوحدة" error={errors.unit?.message}>
-            <input
-              {...register('unit')}
-              className="input"
-              placeholder="كيلو / قطعة / علبة"
-            />
+            <input {...register('unit')} className="input" placeholder="كيلو / قطعة / علبة" />
           </Field>
         </div>
 
@@ -91,27 +103,13 @@ export default function NewProductPage() {
           <select {...register('category')} className="input">
             <option value="">اختر الفئة</option>
             {categories.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
+              <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </select>
         </Field>
 
         <Field label="المنطقة" error={errors.area?.message}>
-          <input
-            {...register('area')}
-            className="input"
-            placeholder="الخرطوم، أم درمان..."
-          />
-        </Field>
-
-        <Field label="رابط الصورة (اختياري)" error={errors.imageUrl?.message}>
-          <input
-            {...register('imageUrl')}
-            className="input"
-            placeholder="https://..."
-          />
+          <input {...register('area')} className="input" placeholder="الخرطوم، أم درمان..." />
         </Field>
 
         {error && (

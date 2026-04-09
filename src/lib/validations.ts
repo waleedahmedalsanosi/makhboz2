@@ -33,6 +33,7 @@ export const productSchema = z.object({
   area: z.string().min(2, 'المنطقة يجب أن تكون حرفين على الأقل'),
   unit: z.string().default('piece'),
   imageUrl: z.string().url('رابط الصورة غير صحيح').optional(),
+  isAvailable: z.boolean().optional(),
 })
 
 export const orderSchema = z.object({

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import { formatPrice } from '@/lib/utils'
 import { OrderActions } from './OrderActions'
+import { SkeletonOrderList } from '@/components/Skeleton';
 
 export default async function DashboardOrdersPage() {
   const session = await auth()

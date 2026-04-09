@@ -3,6 +3,28 @@ import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import { formatPrice } from '@/lib/utils'
 
+export async function generateMetadata() {
+  const session = await auth();
+  const baker = await prisma.baker.findUnique({
+    where: { userId: session?.user.id },
+    include: { user: { select: { name: true } } },
+  });
+
+  if (!baker) return { title: 'لوحة التحكم' };
+
+  return {
+    title: `لوحة التحكم - ${baker.user.name}`,
+    description: 'إدارة منتجاتك وطلباتك بسهولة.',
+    openGraph: {
+      title: `لوحة التحكم - ${baker.user.name}`,
+      description: 'إدارة منتجاتك وطلباتك بسهولة.',
+      images: [
+        { url: baker.imageUrl || '/default-baker.jpg', width: 800, height: 600 },
+      ],
+    },
+  };
+}
+
 export default async function DashboardPage() {
   const session = await auth()
   if (!session || session.user.role !== 'BAKER') redirect('/login')

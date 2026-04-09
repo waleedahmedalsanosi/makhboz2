@@ -2,8 +2,9 @@ import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import { formatPrice } from '@/lib/utils'
-import { OrderForm } from './OrderForm'
+import { AddToCartButton } from './AddToCartButton'
 import Link from 'next/link'
+import Image from 'next/image'
 
 const categoryEmojis: Record<string, string> = {
   KAAK: '🥐',
@@ -29,7 +30,11 @@ export default async function ProductPage({
 
   const product = await prisma.product.findUnique({
     where: { id, isAvailable: true },
-    include: { baker: { include: { user: { select: { name: true } } } } },
+    include: {
+      baker: {
+        include: { user: { select: { name: true } } },
+      },
+    },
   })
 
   if (!product) notFound()
@@ -51,10 +56,11 @@ export default async function ProductPage({
           {/* Product image */}
           <div className="aspect-video bg-amber-50 flex items-center justify-center text-8xl">
             {product.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={product.imageUrl}
                 alt={product.name}
+                width={500}
+                height={500}
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -81,24 +87,25 @@ export default async function ProductPage({
             )}
 
             <div className="border-t border-gray-100 pt-4 mb-6">
-              <p className="text-sm text-gray-600">
-                الخبازة:{' '}
-                <span className="font-medium text-gray-800">
-                  {product.baker.user.name}
-                </span>{' '}
-                · {product.baker.area}
-              </p>
+              <Link
+                href={`/bakers/${product.baker.id}`}
+                className="text-sm text-amber-600 hover:underline font-medium"
+              >
+                {product.baker.user.name}
+              </Link>
+              <span className="text-sm text-gray-500"> · {product.baker.area}</span>
             </div>
 
             {session ? (
               session.user.role === 'BUYER' ? (
-                <OrderForm
+                <AddToCartButton
                   productId={product.id}
                   productName={product.name}
+                  bakerId={product.baker.id}
+                  bakerName={product.baker.user.name}
                   price={product.price}
                   unit={product.unit}
-                  bakerBankName={product.baker.bankName}
-                  bakerBankAccount={product.baker.bankAccount}
+                  imageUrl={product.imageUrl}
                 />
               ) : (
                 <p className="text-sm text-gray-500 text-center py-3">
@@ -118,4 +125,25 @@ export default async function ProductPage({
       </main>
     </div>
   )
+}
+
+export async function generateMetadata({ params }: { params: { id: string } }) {
+  const product = await prisma.product.findUnique({
+    where: { id: params.id },
+    include: { baker: { select: { user: { select: { name: true } } } } },
+  });
+
+  if (!product) return { title: 'المنتج غير موجود' };
+
+  return {
+    title: `${product.name} - ${product.baker.user.name}`,
+    description: product.description,
+    openGraph: {
+      title: `${product.name} - ${product.baker.user.name}`,
+      description: product.description,
+      images: [
+        { url: product.imageUrl || '/default-product.jpg', width: 800, height: 600 },
+      ],
+    },
+  };
 }
