@@ -18,10 +18,10 @@ const categoryEmojis: Record<string, string> = {
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; area?: string }>
+  searchParams: Promise<{ category?: string; area?: string; search?: string }>
 }) {
   const session = await auth()
-  const { category, area } = await searchParams
+  const { category, area, search } = await searchParams
 
   const validCategory = category && VALID_CATEGORIES.includes(category)
     ? (category as ProductCategory)
@@ -32,6 +32,7 @@ export default async function HomePage({
       isAvailable: true,
       ...(validCategory ? { category: validCategory } : {}),
       ...(area ? { area: { contains: area, mode: 'insensitive' } } : {}),
+      ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
     },
     include: { baker: { include: { user: { select: { name: true } } } } },
     orderBy: { createdAt: 'desc' },

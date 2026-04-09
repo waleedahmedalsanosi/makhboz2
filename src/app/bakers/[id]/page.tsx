@@ -17,23 +17,27 @@ export default async function BakerPage({
 }) {
   const { id } = await params
 
-  const baker = await prisma.baker.findUnique({
-    where: { id },
-    include: {
-      user: { select: { name: true } },
-      products: {
-        where: { isAvailable: true },
-        orderBy: { createdAt: 'desc' },
+  const [baker, reviews] = await Promise.all([
+    prisma.baker.findUnique({
+      where: { id },
+      include: {
+        user: { select: { name: true } },
+        products: {
+          where: { isAvailable: true },
+          orderBy: { createdAt: 'desc' },
+        },
+        _count: { select: { products: true } },
       },
-      _count: { select: { products: true } },
-    },
-  })
+    }),
+    prisma.review.findMany({
+      where: { order: { items: { some: { product: { bakerId: id } } } } },
+      include: { order: { include: { user: { select: { name: true } } } } },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    }),
+  ])
 
   if (!baker) notFound()
-
-  const reviewCount = await prisma.review.count({
-    where: { order: { items: { some: { product: { bakerId: id } } } } },
-  })
 
   return (
     <div className="min-h-screen bg-amber-50">
@@ -76,7 +80,7 @@ export default async function BakerPage({
                   <span className="flex items-center gap-1">
                     <span className="text-amber-500">★</span>
                     {baker.rating.toFixed(1)}
-                    {reviewCount > 0 && <span>({reviewCount})</span>}
+                    {reviews.length > 0 && <span>({reviews.length})</span>}
                   </span>
                 )}
                 <span>{baker._count.products} منتج</span>
@@ -96,7 +100,7 @@ export default async function BakerPage({
         {baker.products.length === 0 ? (
           <p className="text-gray-400 text-sm text-center py-10">لا توجد منتجات متاحة حالياً</p>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
             {baker.products.map((product) => (
               <Link
                 key={product.id}
@@ -126,6 +130,33 @@ export default async function BakerPage({
                 </div>
               </Link>
             ))}
+          </div>
+        )}
+
+        {/* Reviews */}
+        {reviews.length > 0 && (
+          <div>
+            <h2 className="font-semibold text-gray-700 mb-4">
+              التقييمات ({reviews.length})
+            </h2>
+            <div className="space-y-3">
+              {reviews.map((review) => (
+                <div key={review.id} className="bg-white rounded-xl border border-amber-100 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-gray-800">
+                      {review.order.user.name}
+                    </p>
+                    <span className="text-amber-500 text-sm">
+                      {'★'.repeat(review.rating)}
+                      <span className="text-gray-200">{'★'.repeat(5 - review.rating)}</span>
+                    </span>
+                  </div>
+                  {review.comment && (
+                    <p className="text-sm text-gray-600">{review.comment}</p>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </main>

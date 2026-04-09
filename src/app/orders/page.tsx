@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, formatDate } from '@/lib/utils'
 import Link from 'next/link'
 
 const statusLabels: Record<string, string> = {
@@ -75,6 +75,7 @@ export default async function OrdersPage() {
                       {order.items.map((i) => i.product.name).join('، ')}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">{order.deliveryAddress}</p>
+                  <p className="text-xs text-gray-400 mt-1">{formatDate(order.createdAt)}</p>
                   </div>
                   <div className="text-left shrink-0">
                     <p className="font-bold text-amber-700">{formatPrice(order.total)}</p>

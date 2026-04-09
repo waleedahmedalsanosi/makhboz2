@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { redirect, notFound } from 'next/navigation'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, formatDate } from '@/lib/utils'
 import Link from 'next/link'
 import { PaymentProofUpload } from './PaymentProofUpload'
 import { ReviewForm } from './ReviewForm'
@@ -70,6 +70,7 @@ export default async function OrderDetailPage({
               <p className="font-semibold text-gray-800 mt-0.5">
                 {statusLabels[order.status] ?? order.status}
               </p>
+              <p className="text-xs text-gray-400 mt-1">{formatDate(order.createdAt)}</p>
             </div>
             <div className="text-left">
               <p className="text-sm text-gray-500">حالة الدفع</p>

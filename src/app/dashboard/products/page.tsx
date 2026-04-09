@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { formatPrice } from '@/lib/utils'
 import { DeleteProductButton } from './DeleteProductButton'
+import { ToggleAvailabilityButton } from './ToggleAvailabilityButton'
 
 export default async function DashboardProductsPage() {
   const session = await auth()
@@ -64,15 +65,10 @@ export default async function DashboardProductsPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-800">{formatPrice(product.price)}</td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        product.isAvailable
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                    >
-                      {product.isAvailable ? 'متاح' : 'غير متاح'}
-                    </span>
+                    <ToggleAvailabilityButton
+                      productId={product.id}
+                      isAvailable={product.isAvailable}
+                    />
                   </td>
                   <td className="px-4 py-3 text-left">
                     <div className="flex items-center gap-2 justify-end">
