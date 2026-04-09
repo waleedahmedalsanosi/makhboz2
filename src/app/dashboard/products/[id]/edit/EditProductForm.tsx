@@ -1,12 +1,13 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { productSchema } from '@/lib/validations'
 import { useState } from 'react'
 import type { z } from 'zod'
 import type { Product } from '@prisma/client'
+import { ProductImageUpload } from '../../ProductImageUpload'
 
 type ProductData = z.input<typeof productSchema>
 
@@ -24,6 +25,7 @@ export function EditProductForm({ product }: { product: Product }) {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<ProductData>({
     resolver: zodResolver(productSchema),
@@ -41,7 +43,6 @@ export function EditProductForm({ product }: { product: Product }) {
 
   async function onSubmit(data: ProductData) {
     setError(null)
-    // Convert empty imageUrl string to undefined so URL validation passes
     const payload = {
       ...data,
       imageUrl: data.imageUrl || undefined,
@@ -63,6 +64,19 @@ export function EditProductForm({ product }: { product: Product }) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+      <Field label="صورة المنتج">
+        <Controller
+          name="imageUrl"
+          control={control}
+          render={({ field }) => (
+            <ProductImageUpload
+              value={field.value ?? ''}
+              onChange={field.onChange}
+            />
+          )}
+        />
+      </Field>
+
       <Field label="اسم المنتج" error={errors.name?.message}>
         <input {...register('name')} className="input" placeholder="كعك بالسمسم" />
       </Field>
@@ -70,7 +84,7 @@ export function EditProductForm({ product }: { product: Product }) {
       <Field label="الوصف (اختياري)" error={errors.description?.message}>
         <textarea
           {...register('description')}
-          className="input min-h-[80px] resize-none"
+          className="input min-h-20 resize-none"
           placeholder="وصف قصير للمنتج..."
         />
       </Field>
@@ -103,10 +117,6 @@ export function EditProductForm({ product }: { product: Product }) {
 
       <Field label="المنطقة" error={errors.area?.message}>
         <input {...register('area')} className="input" placeholder="الخرطوم، أم درمان..." />
-      </Field>
-
-      <Field label="رابط الصورة (اختياري)" error={errors.imageUrl?.message}>
-        <input {...register('imageUrl')} className="input" placeholder="https://..." />
       </Field>
 
       <div className="flex items-center gap-3">

@@ -3,8 +3,12 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
 
-const buyerUpdateSchema = z.object({
+const buyerProofSchema = z.object({
   paymentProofUrl: z.string().url(),
+})
+
+const buyerCancelSchema = z.object({
+  status: z.literal('CANCELLED'),
 })
 
 const bakerUpdateSchema = z.object({
@@ -22,22 +26,36 @@ export async function PATCH(
   const { id } = await ctx.params
   const body = await request.json()
 
-  // Buyer submitting payment proof
+  // Buyer actions: submit payment proof or cancel
   if (session.user.role === 'BUYER') {
     const order = await prisma.order.findFirst({
       where: { id, userId: session.user.id },
     })
     if (!order) return Response.json({ error: 'الطلب غير موجود' }, { status: 404 })
 
-    const parsed = buyerUpdateSchema.safeParse(body)
-    if (!parsed.success) {
-      return Response.json({ error: parsed.error.issues[0].message }, { status: 400 })
+    // Cancel — only allowed when PENDING
+    const cancelParsed = buyerCancelSchema.safeParse(body)
+    if (cancelParsed.success) {
+      if (order.status !== 'PENDING') {
+        return Response.json({ error: 'لا يمكن إلغاء الطلب بعد قبوله' }, { status: 400 })
+      }
+      const updated = await prisma.order.update({
+        where: { id },
+        data: { status: 'CANCELLED' },
+      })
+      return Response.json(updated)
+    }
+
+    // Submit payment proof
+    const proofParsed = buyerProofSchema.safeParse(body)
+    if (!proofParsed.success) {
+      return Response.json({ error: proofParsed.error.issues[0].message }, { status: 400 })
     }
 
     const updated = await prisma.order.update({
       where: { id },
       data: {
-        paymentProofUrl: parsed.data.paymentProofUrl,
+        paymentProofUrl: proofParsed.data.paymentProofUrl,
         paymentStatus: 'PROOF_SUBMITTED',
       },
     })
