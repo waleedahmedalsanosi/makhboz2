@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 export function PaymentProofUpload({ orderId }: { orderId: string }) {
   const router = useRouter()
@@ -78,10 +79,11 @@ export function PaymentProofUpload({ orderId }: { orderId: string }) {
       />
 
       {preview && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={preview}
           alt="معاينة"
+          width={400}
+          height={300}
           className="w-full max-h-48 object-contain rounded-lg border border-gray-200 mb-4"
         />
       )}

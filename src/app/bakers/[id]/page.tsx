@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { formatPrice } from '@/lib/utils'
+import Image from 'next/image';
 
 const categoryEmojis: Record<string, string> = {
   KAAK: '🥐',
@@ -55,10 +56,11 @@ export default async function BakerPage({
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 rounded-full bg-amber-100 overflow-hidden flex items-center justify-center shrink-0">
               {baker.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={baker.imageUrl}
                   alt={baker.user.name}
+                  width={300}
+                  height={300}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -109,10 +111,11 @@ export default async function BakerPage({
               >
                 <div className="aspect-square bg-amber-50 flex items-center justify-center overflow-hidden">
                   {product.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={product.imageUrl}
                       alt={product.name}
+                      width={300}
+                      height={300}
                       className="w-full h-full object-cover"
                     />
                   ) : (

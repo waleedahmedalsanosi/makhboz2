@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTransition } from 'react'
+import { AddToCartButton } from '@/app/products/[id]/AddToCartButton';
 
 const categories = [
   { value: '', label: 'الكل' },

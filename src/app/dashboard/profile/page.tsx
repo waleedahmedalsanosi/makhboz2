@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import Image from 'next/image'
 
 const profileSchema = z.object({
   area: z.string().min(2, 'المنطقة يجب أن تكون حرفين على الأقل'),
@@ -88,8 +89,13 @@ export default function BakerProfilePage() {
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 rounded-full bg-amber-100 overflow-hidden flex items-center justify-center shrink-0">
               {imagePreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={imagePreview} alt="صورة" className="w-full h-full object-cover" />
+                <Image
+                  src={imagePreview}
+                  alt="صورة"
+                  width={200}
+                  height={200}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <span className="text-3xl">👩‍🍳</span>
               )}

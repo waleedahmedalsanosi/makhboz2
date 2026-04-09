@@ -1,9 +1,14 @@
-import Link from 'next/link'
+"use client";
+
+import { useRouter } from 'next/navigation'
 import { Suspense } from 'react'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { formatPrice } from '@/lib/utils'
 import { ProductFilters } from '@/components/ProductFilters'
+import { CartButton } from '@/components/CartButton'
+import Image from 'next/image'
+import Link from 'next/link'
 import type { ProductCategory } from '@prisma/client'
 
 const VALID_CATEGORIES = ['KAAK', 'PETITFOUR', 'BISCUIT', 'MANIN']
@@ -13,6 +18,22 @@ const categoryEmojis: Record<string, string> = {
   PETITFOUR: '🍪',
   BISCUIT: '🍩',
   MANIN: '🥮',
+}
+
+function BakerLink({ bakerId, children }: { bakerId: string; children: React.ReactNode }) {
+  const router = useRouter()
+
+  return (
+    <span
+      onClick={(e) => {
+        e.stopPropagation()
+        router.push(`/bakers/${bakerId}`)
+      }}
+      className="text-xs text-amber-600 hover:underline mt-0.5 block cursor-pointer"
+    >
+      {children}
+    </span>
+  )
 }
 
 export default async function HomePage({
@@ -45,7 +66,8 @@ export default async function HomePage({
       <header className="bg-white border-b border-amber-100 px-4 py-3 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <h1 className="text-xl font-bold text-amber-800">مخبوز</h1>
-          <nav className="flex items-center gap-3">
+          <nav className="flex items-center gap-4">
+            <CartButton />
             {session ? (
               <>
                 {session.user.role === 'BAKER' && (
@@ -116,28 +138,17 @@ export default async function HomePage({
                 className="bg-white rounded-xl border border-amber-100 overflow-hidden hover:shadow-md transition-shadow"
               >
                 <div className="aspect-square bg-amber-50 flex items-center justify-center overflow-hidden">
-                  {product.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={product.imageUrl}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-4xl">
-                      {categoryEmojis[product.category] ?? '🍞'}
-                    </span>
-                  )}
+                  <Image
+                    src={product.imageUrl || '/default-product.jpg'}
+                    alt={product.name}
+                    width={300}
+                    height={300}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="p-3">
                   <p className="font-medium text-gray-800 text-sm truncate">{product.name}</p>
-                  <Link
-                    href={`/bakers/${product.baker.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-xs text-amber-600 hover:underline mt-0.5 block"
-                  >
-                    {product.baker.user.name}
-                  </Link>
+                  <BakerLink bakerId={product.baker.id}>{product.baker.user.name}</BakerLink>
                   <p className="text-xs text-gray-400">{product.area}</p>
                   <p className="text-amber-700 font-semibold text-sm mt-1">
                     {formatPrice(product.price)}

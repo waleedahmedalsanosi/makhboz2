@@ -1,0 +1,28 @@
+import { NextResponse } from 'next/server';
+import prisma from '@/lib/db';
+
+export async function GET() {
+  const products = await prisma.product.findMany({
+    select: { id: true },
+  });
+
+  const bakers = await prisma.baker.findMany({
+    select: { id: true },
+  });
+
+  const urls = [
+    ...products.map((product) => `<url><loc>https://example.com/products/${product.id}</loc></url>`),
+    ...bakers.map((baker) => `<url><loc>https://example.com/bakers/${baker.id}</loc></url>`),
+  ];
+
+  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+  <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    ${urls.join('\n')}
+  </urlset>`;
+
+  return new NextResponse(sitemap, {
+    headers: {
+      'Content-Type': 'application/xml',
+    },
+  });
+}

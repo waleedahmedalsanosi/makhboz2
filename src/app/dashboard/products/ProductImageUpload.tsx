@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import Image from 'next/image'
 
 export function ProductImageUpload({
   value,
@@ -35,8 +36,13 @@ export function ProductImageUpload({
     <div className="space-y-2">
       {value ? (
         <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={value} alt="صورة المنتج" className="w-full h-full object-cover" />
+          <Image
+            src={value}
+            alt="صورة المنتج"
+            width={150}
+            height={150}
+            className="w-full h-full object-cover"
+          />
           <button
             type="button"
             onClick={() => onChange('')}
