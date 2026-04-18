@@ -3,6 +3,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
+import type { UserRole } from '@/types'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -60,8 +61,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (!token.sub) throw new Error('Missing token subject')
       session.user.id = token.sub
-      session.user.role = token.role
-      session.user.bakerId = token.bakerId
+      session.user.role = token.role as UserRole | undefined
+      session.user.bakerId = token.bakerId as string | undefined
       return session
     },
   },

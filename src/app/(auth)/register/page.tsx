@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { registerSchema } from '@/lib/validations'
 import type { z } from 'zod'
 
+type RegisterInput = z.input<typeof registerSchema>
 type RegisterData = z.infer<typeof registerSchema>
 
 export default function RegisterPage() {
@@ -19,7 +20,7 @@ export default function RegisterPage() {
     handleSubmit,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<RegisterData>({
+  } = useForm<RegisterInput, unknown, RegisterData>({
     resolver: zodResolver(registerSchema),
     defaultValues: { role: 'BUYER' },
   })

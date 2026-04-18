@@ -8,13 +8,10 @@ export const registerSchema = z.object({
   role: z.enum(['BUYER', 'BAKER'] as const, {
     error: 'يجب اختيار نوع حساب صحيح',
   }),
-  area: z.preprocess(
-    (v) => (v === '' ? undefined : v),
-    z.string().min(2, 'المنطقة يجب أن تكون حرفين على الأقل').optional()
-  ),
+  area: z.string().optional().transform((v) => (v === '' ? undefined : v)),
 }).refine(
-  (data) => data.role !== 'BAKER' || !!data.area,
-  { message: 'المنطقة مطلوبة للخباز', path: ['area'] }
+  (data) => data.role !== 'BAKER' || (!!data.area && data.area.length >= 2),
+  { message: 'المنطقة مطلوبة للخباز (حرفان على الأقل)', path: ['area'] }
 )
 
 export const loginSchema = z.object({
