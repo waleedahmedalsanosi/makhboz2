@@ -60,7 +60,7 @@ export async function PATCH(
     })
     if (result.count === 0)
       return Response.json({ error: 'الطلب غير موجود' }, { status: 404 })
-    return Response.json({ id, paymentStatus: 'PROOF_SUBMITTED' })
+    return Response.json({ id, paymentStatus: 'PROOF_SUBMITTED', paymentProofUrl: proofParsed.data.paymentProofUrl })
   }
 
   // Baker updating order/payment status
