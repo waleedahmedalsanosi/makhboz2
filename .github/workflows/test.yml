@@ -1,0 +1,153 @@
+name: PR Gate
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Lint ──────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+  # ── Unit Tests ────────────────────────────────────────────────────────────
+  unit:
+    name: Unit Tests (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Upload unit test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-results-${{ github.run_id }}
+          path: test-results/
+          retention-days: 7
+
+  # ── P0 Strict Gate (block merge on any critical failure) ─────────────────
+  p0-gate:
+    name: P0 Strict Gate
+    runs-on: ubuntu-latest
+    needs: [lint, unit]
+    env:
+      CI: 'true'
+      # Security: all secrets routed through env to prevent script injection
+      DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      NEXTAUTH_URL: http://localhost:3000
+      TEST_BUYER_EMAIL: ${{ secrets.TEST_BUYER_EMAIL }}
+      TEST_BUYER_PASSWORD: ${{ secrets.TEST_BUYER_PASSWORD }}
+      TEST_BAKER_EMAIL: ${{ secrets.TEST_BAKER_EMAIL }}
+      TEST_BAKER_PASSWORD: ${{ secrets.TEST_BAKER_PASSWORD }}
+      TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
+      TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+      NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+      CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply database migrations
+        run: npx prisma migrate deploy
+
+      - name: P0 tests — must be 100% green
+        # Security: grep value is a hardcoded literal, not user input
+        run: npx playwright test --project=api --grep "@p0"
+
+  # ── API Tests (P0 + P1 gate) ──────────────────────────────────────────────
+  api:
+    name: API Tests — P0 + P1 (Playwright)
+    runs-on: ubuntu-latest
+    needs: [p0-gate]
+    # env inherited from job-level; reuse secrets already validated by p0-gate
+    env:
+      CI: 'true'
+      DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      NEXTAUTH_URL: http://localhost:3000
+      TEST_BUYER_EMAIL: ${{ secrets.TEST_BUYER_EMAIL }}
+      TEST_BUYER_PASSWORD: ${{ secrets.TEST_BUYER_PASSWORD }}
+      TEST_BAKER_EMAIL: ${{ secrets.TEST_BAKER_EMAIL }}
+      TEST_BAKER_PASSWORD: ${{ secrets.TEST_BAKER_PASSWORD }}
+      TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
+      TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+      NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+      CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        # postinstall runs `prisma generate` automatically
+
+      - name: Apply database migrations
+        run: npx prisma migrate deploy
+
+      - name: Run API tests
+        # 4 workers in CI (see playwright.config.ts)
+        # Note: if using Neon, append ?pgbouncer=true&connection_limit=5 to TEST_DATABASE_URL
+        run: npm run test:api
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-playwright-report-${{ github.run_id }}
+          path: |
+            test-results/html/
+            test-results/junit.xml
+            playwright-report/
+          retention-days: 14
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: test-results/junit.xml
+          check_name: API Test Results
+          comment_mode: always

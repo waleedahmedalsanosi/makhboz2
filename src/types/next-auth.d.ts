@@ -15,7 +15,9 @@ declare module 'next-auth' {
       bakerId?: string
     }
   }
+}
 
+declare module 'next-auth/jwt' {
   interface JWT {
     role?: UserRole
     bakerId?: string

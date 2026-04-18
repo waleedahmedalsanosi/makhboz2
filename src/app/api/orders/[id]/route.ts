@@ -3,8 +3,13 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
 
+const CLOUDINARY_BASE = 'https://res.cloudinary.com/'
+
 const buyerProofSchema = z.object({
-  paymentProofUrl: z.string().url(),
+  paymentProofUrl: z.string().url().refine(
+    (url) => url.startsWith(CLOUDINARY_BASE),
+    { message: 'رابط إثبات الدفع غير صحيح' }
+  ),
 })
 
 const buyerCancelSchema = z.object({
@@ -12,7 +17,7 @@ const buyerCancelSchema = z.object({
 })
 
 const bakerUpdateSchema = z.object({
-  status: z.enum(['ACCEPTED', 'PREPARING', 'DELIVERED', 'CANCELLED'] as const).optional(),
+  status: z.enum(['ACCEPTED', 'PREPARING', 'DELIVERED'] as const).optional(),
   paymentStatus: z.enum(['VERIFIED', 'REJECTED'] as const).optional(),
 })
 
@@ -28,22 +33,16 @@ export async function PATCH(
 
   // Buyer actions: submit payment proof or cancel
   if (session.user.role === 'BUYER') {
-    const order = await prisma.order.findFirst({
-      where: { id, userId: session.user.id },
-    })
-    if (!order) return Response.json({ error: 'الطلب غير موجود' }, { status: 404 })
-
     // Cancel — only allowed when PENDING
     const cancelParsed = buyerCancelSchema.safeParse(body)
     if (cancelParsed.success) {
-      if (order.status !== 'PENDING') {
-        return Response.json({ error: 'لا يمكن إلغاء الطلب بعد قبوله' }, { status: 400 })
-      }
-      const updated = await prisma.order.update({
-        where: { id },
+      const result = await prisma.order.updateMany({
+        where: { id, userId: session.user.id, status: 'PENDING' },
         data: { status: 'CANCELLED' },
       })
-      return Response.json(updated)
+      if (result.count === 0)
+        return Response.json({ error: 'الطلب غير موجود أو لا يمكن إلغاؤه' }, { status: 404 })
+      return Response.json({ id, status: 'CANCELLED' })
     }
 
     // Submit payment proof
@@ -52,36 +51,35 @@ export async function PATCH(
       return Response.json({ error: proofParsed.error.issues[0].message }, { status: 400 })
     }
 
-    const updated = await prisma.order.update({
-      where: { id },
+    const result = await prisma.order.updateMany({
+      where: { id, userId: session.user.id },
       data: {
         paymentProofUrl: proofParsed.data.paymentProofUrl,
         paymentStatus: 'PROOF_SUBMITTED',
       },
     })
-    return Response.json(updated)
+    if (result.count === 0)
+      return Response.json({ error: 'الطلب غير موجود' }, { status: 404 })
+    return Response.json({ id, paymentStatus: 'PROOF_SUBMITTED' })
   }
 
   // Baker updating order/payment status
   if (session.user.role === 'BAKER') {
-    const baker = await prisma.baker.findUnique({ where: { userId: session.user.id } })
-    if (!baker) return Response.json({ error: 'غير مصرح' }, { status: 401 })
-
-    const order = await prisma.order.findFirst({
-      where: { id, items: { some: { product: { bakerId: baker.id } } } },
-    })
-    if (!order) return Response.json({ error: 'الطلب غير موجود' }, { status: 404 })
-
     const parsed = bakerUpdateSchema.safeParse(body)
     if (!parsed.success) {
       return Response.json({ error: parsed.error.issues[0].message }, { status: 400 })
     }
 
-    const updated = await prisma.order.update({
-      where: { id },
+    const baker = await prisma.baker.findUnique({ where: { userId: session.user.id } })
+    if (!baker) return Response.json({ error: 'غير مصرح' }, { status: 401 })
+
+    const result = await prisma.order.updateMany({
+      where: { id, items: { some: { product: { bakerId: baker.id } } } },
       data: parsed.data,
     })
-    return Response.json(updated)
+    if (result.count === 0)
+      return Response.json({ error: 'الطلب غير موجود' }, { status: 404 })
+    return Response.json({ id, ...parsed.data })
   }
 
   return Response.json({ error: 'غير مصرح' }, { status: 401 })

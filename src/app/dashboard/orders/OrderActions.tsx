@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 type OrderStatus = 'PENDING' | 'ACCEPTED' | 'PREPARING' | 'DELIVERED' | 'CANCELLED'
@@ -15,18 +14,22 @@ export function OrderActions({
   currentStatus: OrderStatus
   paymentStatus: PaymentStatus
 }) {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [localStatus, setLocalStatus] = useState<OrderStatus>(currentStatus)
+  const [localPaymentStatus, setLocalPaymentStatus] = useState<PaymentStatus>(paymentStatus)
 
-  async function update(data: object) {
+  async function update(data: { status?: OrderStatus; paymentStatus?: PaymentStatus }) {
     setLoading(true)
-    await fetch(`/api/orders/${orderId}`, {
+    const res = await fetch(`/api/orders/${orderId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
-    router.refresh()
     setLoading(false)
+    if (res.ok) {
+      if (data.status) setLocalStatus(data.status)
+      if (data.paymentStatus) setLocalPaymentStatus(data.paymentStatus)
+    }
   }
 
   const nextStatus: Partial<Record<OrderStatus, OrderStatus>> = {
@@ -43,7 +46,7 @@ export function OrderActions({
     CANCELLED: 'ملغي',
   }
 
-  const next = nextStatus[currentStatus]
+  const next = nextStatus[localStatus]
 
   return (
     <div className="flex gap-2 flex-wrap">
@@ -53,11 +56,14 @@ export function OrderActions({
           disabled={loading}
           className="text-xs bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg transition-colors"
         >
-          {statusLabels[currentStatus]}
+          {statusLabels[localStatus]}
         </button>
       )}
+      {localStatus === 'DELIVERED' && (
+        <span className="text-xs text-green-700 font-medium">تم التسليم</span>
+      )}
 
-      {paymentStatus === 'PROOF_SUBMITTED' && (
+      {localPaymentStatus === 'PROOF_SUBMITTED' && (
         <>
           <button
             onClick={() => update({ paymentStatus: 'VERIFIED' })}
@@ -76,7 +82,7 @@ export function OrderActions({
         </>
       )}
 
-      {currentStatus !== 'DELIVERED' && currentStatus !== 'CANCELLED' && (
+      {localStatus !== 'DELIVERED' && localStatus !== 'CANCELLED' && (
         <button
           onClick={() => update({ status: 'CANCELLED' })}
           disabled={loading}

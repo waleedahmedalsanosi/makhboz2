@@ -18,6 +18,16 @@ export async function POST(request: NextRequest) {
 
   if (!file) return Response.json({ error: 'لم يتم إرسال ملف' }, { status: 400 })
 
+  const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp']
+  const MAX_BYTES = 5 * 1024 * 1024
+
+  if (!ALLOWED_MIME.includes(file.type))
+    return Response.json({ error: 'نوع الملف غير مسموح، يُقبل فقط JPEG أو PNG أو WebP' }, { status: 400 })
+  if (file.size > MAX_BYTES)
+    return Response.json({ error: 'حجم الملف يجب أن يكون أقل من 5 ميغابايت' }, { status: 400 })
+  if (purpose === 'product' && session.user.role !== 'BAKER')
+    return Response.json({ error: 'غير مصرح' }, { status: 403 })
+
   const bytes = await file.arrayBuffer()
   const buffer = Buffer.from(bytes)
 

@@ -58,11 +58,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token
     },
     async session({ session, token }) {
-      session.user.id = token.sub!
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      session.user.role = (token as any).role
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      session.user.bakerId = (token as any).bakerId
+      if (!token.sub) throw new Error('Missing token subject')
+      session.user.id = token.sub
+      session.user.role = token.role
+      session.user.bakerId = token.bakerId
       return session
     },
   },

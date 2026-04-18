@@ -1,13 +1,12 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
 export function PaymentProofUpload({ orderId }: { orderId: string }) {
-  const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
 
@@ -60,7 +59,15 @@ export function PaymentProofUpload({ orderId }: { orderId: string }) {
       return
     }
 
-    router.refresh()
+    setSubmitted(true)
+  }
+
+  if (submitted) {
+    return (
+      <div className="bg-white rounded-xl border border-amber-100 p-5">
+        <p className="text-sm font-medium text-yellow-700">إثبات مُرسل — بانتظار التحقق</p>
+      </div>
+    )
   }
 
   return (

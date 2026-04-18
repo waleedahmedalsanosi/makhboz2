@@ -8,19 +8,18 @@ export const registerSchema = z.object({
   role: z.enum(['BUYER', 'BAKER'] as const, {
     error: 'يجب اختيار نوع حساب صحيح',
   }),
-  area: z.string().min(2, 'المنطقة يجب أن تكون حرفين على الأقل'),
-})
+  area: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().min(2, 'المنطقة يجب أن تكون حرفين على الأقل').optional()
+  ),
+}).refine(
+  (data) => data.role !== 'BAKER' || !!data.area,
+  { message: 'المنطقة مطلوبة للخباز', path: ['area'] }
+)
 
 export const loginSchema = z.object({
   email: z.string().email('البريد الإلكتروني غير صحيح'),
   password: z.string().min(1, 'كلمة المرور مطلوبة'),
-})
-
-export const bakerProfileSchema = z.object({
-  bio: z.string().optional(),
-  area: z.string().min(2, 'المنطقة يجب أن تكون حرفين على الأقل'),
-  bankName: z.string().optional(),
-  bankAccount: z.string().optional(),
 })
 
 export const productSchema = z.object({

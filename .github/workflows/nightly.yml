@@ -1,0 +1,153 @@
+name: Nightly Full Suite
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 02:00 UTC daily
+  workflow_dispatch:      # manual trigger
+
+env:
+  CI: 'true'
+  # Security: all secrets routed through env to prevent script injection
+  DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+  AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+  NEXTAUTH_URL: http://localhost:3000
+  TEST_BUYER_EMAIL: ${{ secrets.TEST_BUYER_EMAIL }}
+  TEST_BUYER_PASSWORD: ${{ secrets.TEST_BUYER_PASSWORD }}
+  TEST_BAKER_EMAIL: ${{ secrets.TEST_BAKER_EMAIL }}
+  TEST_BAKER_PASSWORD: ${{ secrets.TEST_BAKER_PASSWORD }}
+  TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
+  TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+  NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+  CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+  CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+
+jobs:
+  # ── Full Test Suite ───────────────────────────────────────────────────────
+  full-suite:
+    name: Full Suite (Unit + API + E2E)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply database migrations
+        run: npx prisma migrate deploy
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: playwright-${{ runner.os }}-chromium-
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: API tests
+        run: npm run test:api
+
+      - name: E2E tests
+        # workers=1 — enforced via package.json test:e2e script
+        run: npm run test:e2e
+
+      - name: Upload full suite report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-full-report-${{ github.run_id }}
+          path: |
+            test-results/html/
+            test-results/junit.xml
+            playwright-report/
+          retention-days: 30
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: test-results/junit.xml
+          check_name: Nightly Test Results
+
+  # ── Burn-In (Flaky Detection) ─────────────────────────────────────────────
+  burn-in:
+    name: Burn-In Run ${{ matrix.run }}
+    runs-on: ubuntu-latest
+    needs: full-suite
+    strategy:
+      fail-fast: false
+      matrix:
+        run: [2, 3]  # full-suite = run 1; this adds runs 2 and 3
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply database migrations
+        run: npx prisma migrate deploy
+
+      - name: API tests (burn-in run ${{ matrix.run }})
+        # Security: matrix.run is a controlled integer literal — not user input
+        run: npm run test:api
+
+      - name: Upload burn-in artifacts
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: burn-in-failures-run${{ matrix.run }}-${{ github.run_id }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 14
+
+  # ── Notify on Failure ─────────────────────────────────────────────────────
+  notify:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [full-suite, burn-in]
+    if: failure()
+    steps:
+      - name: Build failure summary
+        id: summary
+        run: |
+          # Security: GITHUB_* are safe contexts — not user-controlled inputs
+          echo "run_url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "date=$(date -u '+%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+
+      - name: Slack notification
+        # Only fires when SLACK_WEBHOOK_URL secret is configured
+        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": ":x: *Nightly test suite failed* (${{ steps.summary.outputs.date }})\n<${{ steps.summary.outputs.run_url }}|View run>",
+              "username": "Makhboz CI",
+              "icon_emoji": ":rotating_light:"
+            }
+
+      - name: GitHub summary
+        run: |
+          echo "### :x: Nightly suite failed" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Date:** ${{ steps.summary.outputs.date }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Run:** [$GITHUB_RUN_ID](${{ steps.summary.outputs.run_url }})" >> "$GITHUB_STEP_SUMMARY"

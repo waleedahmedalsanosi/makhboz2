@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     await prisma.baker.create({
       data: {
         userId: user.id,
-        area,
+        area: area!,
       },
     })
   }

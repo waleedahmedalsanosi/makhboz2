@@ -1,12 +1,10 @@
-"use client";
-
-import { useRouter } from 'next/navigation'
 import { Suspense } from 'react'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { formatPrice } from '@/lib/utils'
 import { ProductFilters } from '@/components/ProductFilters'
 import { CartButton } from '@/components/CartButton'
+import { BakerLink } from './BakerLink'
 import Image from 'next/image'
 import Link from 'next/link'
 import type { ProductCategory } from '@prisma/client'
@@ -20,21 +18,6 @@ const categoryEmojis: Record<string, string> = {
   MANIN: '🥮',
 }
 
-function BakerLink({ bakerId, children }: { bakerId: string; children: React.ReactNode }) {
-  const router = useRouter()
-
-  return (
-    <span
-      onClick={(e) => {
-        e.stopPropagation()
-        router.push(`/bakers/${bakerId}`)
-      }}
-      className="text-xs text-amber-600 hover:underline mt-0.5 block cursor-pointer"
-    >
-      {children}
-    </span>
-  )
-}
 
 export default async function HomePage({
   searchParams,
